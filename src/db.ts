@@ -59,15 +59,20 @@ db.exec(`
 
 // 初期データ投入（開発用）
 const insertAdvertiser = db.prepare('INSERT OR IGNORE INTO advertisers (id, name, balance) VALUES (?, ?, ?)');
-insertAdvertiser.run(1, 'Sample Advertiser', 100000);
+insertAdvertiser.run(1, 'Sample Advertiser (Rich)', 100000);
+insertAdvertiser.run(2, 'Low Balance Advertiser (Poor)', 250); // 3回クリックで予算切れになる設定
 
 const insertPublisher = db.prepare('INSERT OR IGNORE INTO publishers (id, name, domain) VALUES (?, ?, ?)');
 insertPublisher.run(1, 'Sample Publisher Site', 'example.com');
 
 const insertCampaign = db.prepare('INSERT OR IGNORE INTO campaigns (id, advertiser_id, name, budget) VALUES (?, ?, ?, ?)');
 insertCampaign.run(1, 1, 'Winter Sale 2026', 50000);
+insertCampaign.run(2, 2, 'Flash Sale', 500);
 
 const insertAd = db.prepare('INSERT OR IGNORE INTO ads (id, campaign_id, title, description, image_url, target_url, max_bid) VALUES (?, ?, ?, ?, ?, ?, ?)');
-insertAd.run(1, 1, 'New Shoes!', 'Get 20% off on all items.', 'https://placehold.jp/300x250.png?text=AdNetwork+Sample', 'https://google.com', 50);
+// ID:1 は入札額 50円（2位）
+insertAd.run(1, 1, 'New Shoes!', 'Get 20% off on all items.', 'https://placehold.jp/300x250.png?text=Rich+Ad+Shoes', 'https://google.com', 50);
+// ID:2 は入札額 100円（1位）
+insertAd.run(2, 2, 'Cheap Phone!', 'Limited offer for low budget.', 'https://placehold.jp/300x250.png?text=Poor+Ad+Phone', 'https://apple.com', 100);
 
 export default db;
