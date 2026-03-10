@@ -108,42 +108,89 @@ app.get('/click', (req, res) => {
 // 3. ダッシュボード (Admin/Advertiser/Publisher)
 // ---------------------------------------------------------
 
+// ポータル画面（各画面へのリンク）
 app.get('/', (req, res) => {
-  // 統計情報の取得
+  const advertisers = db.prepare('SELECT id, name FROM advertisers').all();
+  const publishers = db.prepare('SELECT id, name FROM publishers').all();
+  res.render('index', { advertisers, publishers });
+});
+
+// 管理者画面 (Admin)
+app.get('/admin', (req, res) => {
   const stats = db.prepare(`
     SELECT 
       (SELECT COUNT(*) FROM impressions) as total_impressions,
       (SELECT COUNT(*) FROM clicks) as total_clicks
   `).get() as any;
 
-  // ID降順で取得して最新の入稿を上に表示（各広告の統計情報も取得）
+  const advertisers = db.prepare('SELECT * FROM advertisers').all();
+  const publishers = db.prepare('SELECT * FROM publishers').all();
   const ads = db.prepare(`
-    SELECT 
-      ads.*,
-      advertisers.balance as advertiser_balance,
-      (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
-      (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id) as clicks
-    FROM ads 
+    SELECT ads.*, advertisers.name as advertiser_name,
+    (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
+    (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id) as clicks
+    FROM ads
     JOIN campaigns ON ads.campaign_id = campaigns.id
     JOIN advertisers ON campaigns.advertiser_id = advertisers.id
-    ORDER BY ads.id DESC
   `).all();
 
-  res.render('dashboard', { stats, ads });
+  res.render('admin', { stats, advertisers, publishers, ads });
 });
 
-// 広告の新規入稿
-app.post('/ads', (req, res) => {
-  const { title, description, image_url, target_url, max_bid } = req.body;
+// 広告主画面 (Advertiser)
+app.get('/advertiser/:id', (req, res) => {
+  const advertiserId = req.params.id;
+  const advertiser = db.prepare('SELECT * FROM advertisers WHERE id = ?').get(advertiserId) as any;
   
-  // デモ用に最初のキャンペーン(ID:1)に紐づける
-  const campaign_id = 1;
+  if (!advertiser) return res.status(404).send('Advertiser not found');
+
+  const ads = db.prepare(`
+    SELECT ads.*,
+    (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
+    (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id) as clicks
+    FROM ads
+    JOIN campaigns ON ads.campaign_id = campaigns.id
+    WHERE campaigns.advertiser_id = ?
+    ORDER BY ads.id DESC
+  `).all(advertiserId);
+
+  res.render('advertiser', { advertiser, ads });
+});
+
+// 媒体社画面 (Publisher)
+app.get('/publisher/:id', (req, res) => {
+  const publisherId = req.params.id;
+  const publisher = db.prepare('SELECT * FROM publishers WHERE id = ?').get(publisherId) as any;
+
+  if (!publisher) return res.status(404).send('Publisher not found');
+
+  const stats = db.prepare(`
+    SELECT 
+      (SELECT COUNT(*) FROM impressions WHERE publisher_id = ?) as impressions,
+      (SELECT COUNT(*) FROM clicks WHERE publisher_id = ?) as clicks
+  `).get(publisherId, publisherId) as any;
+
+  res.render('publisher', { publisher, stats, port: PORT });
+});
+
+// 広告の新規入稿 (広告主用)
+app.post('/ads', (req, res) => {
+  const { advertiser_id, title, description, image_url, target_url, max_bid } = req.body;
+  
+  // 指定された広告主の最初のキャンペーンに紐づける（デモ用）
+  let campaign = db.prepare('SELECT id FROM campaigns WHERE advertiser_id = ? LIMIT 1').get(advertiser_id) as any;
+  
+  if (!campaign) {
+    const result = db.prepare('INSERT INTO campaigns (advertiser_id, name) VALUES (?, ?)').run(advertiser_id, 'Default Campaign');
+    campaign = { id: result.lastInsertRowid };
+  }
+
   const bid = max_bid ? parseFloat(max_bid) : 10;
 
   db.prepare('INSERT INTO ads (campaign_id, title, description, image_url, target_url, max_bid) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(campaign_id, title, description, image_url, target_url, bid);
+    .run(campaign.id, title, description, image_url, target_url, bid);
 
-  res.redirect('/');
+  res.redirect(`/advertiser/${advertiser_id}`);
 });
 
 app.listen(PORT, () => {

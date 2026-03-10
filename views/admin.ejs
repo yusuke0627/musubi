@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>AdNetwork Admin</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-bottom: 20px; }
+        .stats { display: flex; gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .value { font-size: 28px; font-weight: bold; color: #2980b9; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Admin Dashboard (Total Analytics)</h1>
+            <a href="/">← Back to Portal</a>
+        </header>
+
+        <section class="stats">
+            <div class="stat-card"><h3>Network Impressions</h3><div class="value"><%= stats.total_impressions %></div></div>
+            <div class="stat-card"><h3>Network Clicks</h3><div class="value"><%= stats.total_clicks %></div></div>
+            <div class="stat-card"><h3>CTR (%)</h3><div class="value"><%= stats.total_impressions > 0 ? ((stats.total_clicks / stats.total_impressions) * 100).toFixed(2) : 0 %>%</div></div>
+        </section>
+
+        <section class="card">
+            <h2>Registered Advertisers</h2>
+            <table>
+                <thead><tr><th>ID</th><th>Name</th><th>Balance</th></tr></thead>
+                <tbody>
+                    <% advertisers.forEach(adv => { %>
+                        <tr><td><%= adv.id %></td><td><a href="/advertiser/<%= adv.id %>"><%= adv.name %></a></td><td>¥<%= adv.balance.toLocaleString() %></td></tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card">
+            <h2>Registered Publishers</h2>
+            <table>
+                <thead><tr><th>ID</th><th>Name</th><th>Domain</th></tr></thead>
+                <tbody>
+                    <% publishers.forEach(pub => { %>
+                        <tr><td><%= pub.id %></td><td><a href="/publisher/<%= pub.id %>"><%= pub.name %></a></td><td><%= pub.domain %></td></tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card">
+            <h2>Active Ads Across Network</h2>
+            <table>
+                <thead><tr><th>ID</th><th>Title</th><th>Advertiser</th><th>Imps</th><th>Clicks</th><th>Bid</th></tr></thead>
+                <tbody>
+                    <% ads.forEach(ad => { %>
+                        <tr>
+                            <td><%= ad.id %></td>
+                            <td><strong><%= ad.title %></strong></td>
+                            <td><%= ad.advertiser_name %></td>
+                            <td><%= ad.impressions %></td>
+                            <td><%= ad.clicks %></td>
+                            <td>¥<%= ad.max_bid %></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </section>
+    </div>
+</body>
+</html>

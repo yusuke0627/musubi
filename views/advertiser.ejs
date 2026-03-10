@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Advertiser Dashboard - <%= advertiser.name %></title>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .balance { font-size: 24px; color: #e74c3c; font-weight: bold; }
+        form { display: grid; gap: 10px; max-width: 500px; }
+        input, textarea { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #2980b9; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Advertiser: <%= advertiser.name %></h1>
+            <a href="/">← Back to Portal</a>
+        </header>
+
+        <section class="card">
+            <h2>Account Balance</h2>
+            <div class="balance">¥<%= advertiser.balance.toLocaleString() %></div>
+        </section>
+
+        <section class="card">
+            <h2>Create New Ad</h2>
+            <form action="/ads" method="POST">
+                <input type="hidden" name="advertiser_id" value="<%= advertiser.id %>">
+                <input type="text" name="title" placeholder="Ad Title" required>
+                <textarea name="description" placeholder="Short description..."></textarea>
+                <input type="url" name="image_url" placeholder="Image URL" value="https://placehold.jp/300x250.png?text=New+Ad" required>
+                <input type="url" name="target_url" placeholder="Target URL" required>
+                <input type="number" name="max_bid" placeholder="Max Bid (¥)" required>
+                <button type="submit">Publish Ad</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>My Ads</h2>
+            <table>
+                <thead><tr><th>ID</th><th>Title</th><th>Imps</th><th>Clicks</th><th>CTR</th><th>Bid</th></tr></thead>
+                <tbody>
+                    <% ads.forEach(ad => { %>
+                        <tr>
+                            <td><%= ad.id %></td>
+                            <td><strong><%= ad.title %></strong></td>
+                            <td><%= ad.impressions %></td>
+                            <td><%= ad.clicks %></td>
+                            <td><%= ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : 0 %>%</td>
+                            <td>¥<%= ad.max_bid %></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </section>
+    </div>
+</body>
+</html>
