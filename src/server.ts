@@ -18,8 +18,8 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/serve', (req, res) => {
   const publisherId = req.query.publisher_id;
   
-  // 本来はターゲティングなどのロジックが入るが、ここではランダムに1件取得
-  const ad = db.prepare('SELECT * FROM ads ORDER BY RANDOM() LIMIT 1').get() as any;
+  // RTB簡易版：最も入札額（max_bid）が高い広告を1件取得する
+  const ad = db.prepare('SELECT * FROM ads ORDER BY max_bid DESC LIMIT 1').get() as any;
 
   if (!ad) {
     return res.status(204).send(); // 広告なし
@@ -85,13 +85,14 @@ app.get('/', (req, res) => {
 
 // 広告の新規入稿
 app.post('/ads', (req, res) => {
-  const { title, description, image_url, target_url } = req.body;
+  const { title, description, image_url, target_url, max_bid } = req.body;
   
   // デモ用に最初のキャンペーン(ID:1)に紐づける
   const campaign_id = 1;
+  const bid = max_bid ? parseFloat(max_bid) : 10;
 
-  db.prepare('INSERT INTO ads (campaign_id, title, description, image_url, target_url) VALUES (?, ?, ?, ?, ?)')
-    .run(campaign_id, title, description, image_url, target_url);
+  db.prepare('INSERT INTO ads (campaign_id, title, description, image_url, target_url, max_bid) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(campaign_id, title, description, image_url, target_url, bid);
 
   res.redirect('/');
 });

@@ -32,6 +32,7 @@ db.exec(`
     description TEXT,
     image_url TEXT,
     target_url TEXT NOT NULL,
+    max_bid REAL DEFAULT 10,
     FOREIGN KEY(campaign_id) REFERENCES campaigns(id)
   );
 
@@ -66,7 +67,7 @@ insertPublisher.run(1, 'Sample Publisher Site', 'example.com');
 const insertCampaign = db.prepare('INSERT OR IGNORE INTO campaigns (id, advertiser_id, name, budget) VALUES (?, ?, ?, ?)');
 insertCampaign.run(1, 1, 'Winter Sale 2026', 50000);
 
-const insertAd = db.prepare('INSERT OR IGNORE INTO ads (id, campaign_id, title, description, image_url, target_url) VALUES (?, ?, ?, ?, ?, ?)');
-insertAd.run(1, 1, 'New Shoes!', 'Get 20% off on all items.', 'https://placehold.jp/300x250.png?text=AdNetwork+Sample', 'https://google.com');
+const insertAd = db.prepare('INSERT OR IGNORE INTO ads (id, campaign_id, title, description, image_url, target_url, max_bid) VALUES (?, ?, ?, ?, ?, ?, ?)');
+insertAd.run(1, 1, 'New Shoes!', 'Get 20% off on all items.', 'https://placehold.jp/300x250.png?text=AdNetwork+Sample', 'https://google.com', 50);
 
 export default db;

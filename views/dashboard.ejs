@@ -74,6 +74,10 @@
                     <label>Target URL (Landing Page)</label>
                     <input type="url" name="target_url" placeholder="https://example.com" required>
                 </div>
+                <div class="form-group">
+                    <label>Max Bid (¥ CPC)</label>
+                    <input type="number" name="max_bid" placeholder="50" min="1" required>
+                </div>
                 <button type="submit">Publish Ad</button>
             </form>
         </section>
@@ -86,6 +90,7 @@
                         <th>ID</th>
                         <th>Preview</th>
                         <th>Title</th>
+                        <th>Max Bid</th>
                         <th>Target URL</th>
                     </tr>
                 </thead>
@@ -95,6 +100,7 @@
                         <td><%= ad.id %></td>
                         <td><img src="<%= ad.image_url %>" class="preview-img"></td>
                         <td><strong><%= ad.title %></strong><br><small><%= ad.description %></small></td>
+                        <td><strong style="color:#e74c3c;">¥<%= ad.max_bid %></strong></td>
                         <td><code><%= ad.target_url %></code></td>
                     </tr>
                     <% }) %>
