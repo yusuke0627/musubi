@@ -77,8 +77,15 @@ app.get('/', (req, res) => {
       (SELECT COUNT(*) FROM clicks) as total_clicks
   `).get() as any;
 
-  // ID降順で取得して最新の入稿を上に表示
-  const ads = db.prepare('SELECT * FROM ads ORDER BY id DESC').all();
+  // ID降順で取得して最新の入稿を上に表示（各広告の統計情報も取得）
+  const ads = db.prepare(`
+    SELECT 
+      ads.*,
+      (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
+      (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id) as clicks
+    FROM ads 
+    ORDER BY id DESC
+  `).all();
 
   res.render('dashboard', { stats, ads });
 });

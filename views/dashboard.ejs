@@ -89,9 +89,11 @@
                     <tr>
                         <th>ID</th>
                         <th>Preview</th>
-                        <th>Title</th>
-                        <th>Max Bid</th>
-                        <th>Target URL</th>
+                        <th>Title / Description</th>
+                        <th>Impressions</th>
+                        <th>Clicks</th>
+                        <th>CTR (%)</th>
+                        <th>Bid (¥)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -100,8 +102,12 @@
                         <td><%= ad.id %></td>
                         <td><img src="<%= ad.image_url %>" class="preview-img"></td>
                         <td><strong><%= ad.title %></strong><br><small><%= ad.description %></small></td>
+                        <td style="font-weight: bold;"><%= ad.impressions %></td>
+                        <td style="font-weight: bold;"><%= ad.clicks %></td>
+                        <td style="color: #2980b9; font-weight: bold;">
+                            <%= ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : 0 %>%
+                        </td>
                         <td><strong style="color:#e74c3c;">¥<%= ad.max_bid %></strong></td>
-                        <td><code><%= ad.target_url %></code></td>
                     </tr>
                     <% }) %>
                 </tbody>
