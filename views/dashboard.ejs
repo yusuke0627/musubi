@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdNetwork Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f7f6; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header { border-bottom: 2px solid #ddd; padding-bottom: 20px; margin-bottom: 30px; }
+        h1 { margin: 0; color: #2c3e50; }
+        .stats { display: flex; gap: 20px; margin-bottom: 40px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; text-align: center; }
+        .stat-card h3 { margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; }
+        .stat-card .value { font-size: 32px; font-weight: bold; color: #2980b9; margin-top: 10px; }
+        .ad-list { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        th { color: #7f8c8d; font-size: 14px; }
+        .demo-section { margin-top: 40px; background: #eef2f3; padding: 20px; border-radius: 8px; }
+        code { background: #333; color: white; padding: 2px 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AdNetwork Platform</h1>
+        </header>
+
+        <section class="stats">
+            <div class="stat-card">
+                <h3>Total Impressions</h3>
+                <div class="value"><%= stats.total_impressions %></div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Clicks</h3>
+                <div class="value"><%= stats.total_clicks %></div>
+            </div>
+            <div class="stat-card">
+                <h3>CTR (%)</h3>
+                <div class="value">
+                    <%= stats.total_impressions > 0 ? ((stats.total_clicks / stats.total_impressions) * 100).toFixed(2) : 0 %>%
+                </div>
+            </div>
+        </section>
+
+        <section class="ad-list">
+            <h2>Active Ads</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Target URL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% ads.forEach(ad => { %>
+                    <tr>
+                        <td><%= ad.id %></td>
+                        <td><%= ad.title %></td>
+                        <td><code><%= ad.target_url %></code></td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="demo-section">
+            <h2>Demo: Publisher Integration</h2>
+            <p>下記の iframe を媒体社の Web サイトに埋め込むことで広告が表示されます。</p>
+            <code>&lt;iframe src="http://localhost:3000/serve?publisher_id=1" width="300" height="250" frameborder="0"&gt;&lt;/iframe&gt;</code>
+            
+            <div style="margin-top: 20px;">
+                <h4>Preview:</h4>
+                <iframe src="/serve?publisher_id=1" width="320" height="250" frameborder="0"></iframe>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
