@@ -13,12 +13,23 @@
         .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; text-align: center; }
         .stat-card h3 { margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; }
         .stat-card .value { font-size: 32px; font-weight: bold; color: #2980b9; margin-top: 10px; }
-        .ad-list { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        h2 { margin-top: 0; color: #2c3e50; border-left: 4px solid #2980b9; padding-left: 10px; }
+        
+        form { display: grid; gap: 15px; max-width: 600px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-size: 14px; font-weight: bold; margin-bottom: 5px; color: #7f8c8d; }
+        input, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        button { background: #2980b9; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        button:hover { background: #3498db; }
+
         table { width: 100%; border-collapse: collapse; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
         th { color: #7f8c8d; font-size: 14px; }
-        .demo-section { margin-top: 40px; background: #eef2f3; padding: 20px; border-radius: 8px; }
-        code { background: #333; color: white; padding: 2px 5px; border-radius: 3px; }
+        .demo-section { background: #eef2f3; padding: 20px; border-radius: 8px; }
+        code { background: #333; color: white; padding: 2px 5px; border-radius: 3px; font-family: monospace; }
+        .preview-img { width: 100px; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -44,12 +55,36 @@
             </div>
         </section>
 
-        <section class="ad-list">
+        <section class="card">
+            <h2>Create New Ad (Advertiser)</h2>
+            <form action="/ads" method="POST">
+                <div class="form-group">
+                    <label>Ad Title</label>
+                    <input type="text" name="title" placeholder="e.g. Special Discount!" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" placeholder="Short ad copy..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Image URL</label>
+                    <input type="url" name="image_url" value="https://placehold.jp/300x250.png?text=New+Ad" required>
+                </div>
+                <div class="form-group">
+                    <label>Target URL (Landing Page)</label>
+                    <input type="url" name="target_url" placeholder="https://example.com" required>
+                </div>
+                <button type="submit">Publish Ad</button>
+            </form>
+        </section>
+
+        <section class="card">
             <h2>Active Ads</h2>
             <table>
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Preview</th>
                         <th>Title</th>
                         <th>Target URL</th>
                     </tr>
@@ -58,7 +93,8 @@
                     <% ads.forEach(ad => { %>
                     <tr>
                         <td><%= ad.id %></td>
-                        <td><%= ad.title %></td>
+                        <td><img src="<%= ad.image_url %>" class="preview-img"></td>
+                        <td><strong><%= ad.title %></strong><br><small><%= ad.description %></small></td>
                         <td><code><%= ad.target_url %></code></td>
                     </tr>
                     <% }) %>
@@ -72,8 +108,10 @@
             <code>&lt;iframe src="http://localhost:3000/serve?publisher_id=1" width="300" height="250" frameborder="0"&gt;&lt;/iframe&gt;</code>
             
             <div style="margin-top: 20px;">
-                <h4>Preview:</h4>
-                <iframe src="/serve?publisher_id=1" width="320" height="250" frameborder="0"></iframe>
+                <h4>Preview (Site Simulation):</h4>
+                <div style="background: white; padding: 20px; border: 1px dashed #ccc;">
+                    <iframe src="/serve?publisher_id=1" width="320" height="260" frameborder="0"></iframe>
+                </div>
             </div>
         </section>
     </div>

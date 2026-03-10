@@ -7,6 +7,8 @@ const PORT = 3000;
 
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ---------------------------------------------------------
 // 1. 配信エンジン (Ad Serving)
@@ -27,7 +29,7 @@ app.get('/serve', (req, res) => {
   db.prepare('INSERT INTO impressions (ad_id, publisher_id, user_agent) VALUES (?, ?, ?)')
     .run(ad.id, publisherId, req.headers['user-agent']);
 
-  // シンプルなHTML断片を返す（実際はJSONやJSで枠に埋め込む）
+  // シンプルなHTML断片を返す
   const clickUrl = `http://localhost:${PORT}/click?ad_id=${ad.id}&publisher_id=${publisherId}`;
   
   res.send(`
@@ -75,9 +77,23 @@ app.get('/', (req, res) => {
       (SELECT COUNT(*) FROM clicks) as total_clicks
   `).get() as any;
 
-  const ads = db.prepare('SELECT * FROM ads').all();
+  // ID降順で取得して最新の入稿を上に表示
+  const ads = db.prepare('SELECT * FROM ads ORDER BY id DESC').all();
 
   res.render('dashboard', { stats, ads });
+});
+
+// 広告の新規入稿
+app.post('/ads', (req, res) => {
+  const { title, description, image_url, target_url } = req.body;
+  
+  // デモ用に最初のキャンペーン(ID:1)に紐づける
+  const campaign_id = 1;
+
+  db.prepare('INSERT INTO ads (campaign_id, title, description, image_url, target_url) VALUES (?, ?, ?, ?, ?)')
+    .run(campaign_id, title, description, image_url, target_url);
+
+  res.redirect('/');
 });
 
 app.listen(PORT, () => {
