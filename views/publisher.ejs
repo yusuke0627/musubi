@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Publisher Dashboard - <%= publisher.name %></title>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .stats { display: flex; gap: 20px; }
+        .stat-card { background: #fff; padding: 20px; border-radius: 8px; flex: 1; text-align: center; }
+        .value { font-size: 24px; font-weight: bold; color: #27ae60; }
+        .code-block { background: #333; color: white; padding: 15px; border-radius: 4px; display: block; font-family: monospace; margin-top: 10px; overflow-x: auto; }
+        .inline-code { background: #eee; color: #c7254e; padding: 2px 4px; border-radius: 4px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Publisher: <%= publisher.name %></h1>
+            <a href="/">← Back to Portal</a>
+        </header>
+
+        <section class="card">
+            <h2>Site Earnings (Estimated)</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <h3>Impressions</h3>
+                    <div class="value"><%= stats.impressions %></div>
+                </div>
+                <div class="stat-card">
+                    <h3>Clicks</h3>
+                    <div class="value"><%= stats.clicks %></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Ad Tag Integration</h2>
+            <p>下記のタグをあなたのサイト (<code class="inline-code"><%= publisher.domain %></code>) に埋め込んでください。</p>
+            <div class="code-block">
+                &lt;iframe src="http://localhost:<%= port %>/serve?publisher_id=<%= publisher.id %>" width="300" height="250" frameborder="0"&gt;&lt;/iframe&gt;
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Live Preview</h2>
+            <div style="background: white; padding: 20px; border: 1px dashed #ccc; text-align: center;">
+                <iframe src="/serve?publisher_id=<%= publisher.id %>" width="320" height="260" frameborder="0"></iframe>
+            </div>
+        </section>
+    </div>
+</body>
+</html>

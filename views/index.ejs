@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>AdNetwork Portal</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; padding: 50px; text-align: center; }
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: inline-block; min-width: 300px; margin: 10px; vertical-align: top; text-align: left; }
+        h1 { color: #2c3e50; }
+        ul { list-style: none; padding: 0; }
+        li { margin-bottom: 10px; }
+        a { color: #2980b9; text-decoration: none; font-weight: bold; }
+        a:hover { text-decoration: underline; }
+        .admin-link { background: #2c3e50; color: white; padding: 10px 20px; border-radius: 4px; display: block; text-align: center; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>AdNetwork Platform</h1>
+    <p>ログインするアカウントを選択してください（デモ用）</p>
+
+    <div class="card">
+        <h3>System Admin</h3>
+        <a href="/admin" class="admin-link">Administrator Dashboard</a>
+    </div>
+
+    <div class="card">
+        <h3>Advertisers (広告主)</h3>
+        <ul>
+            <% advertisers.forEach(adv => { %>
+                <li><a href="/advertiser/<%= adv.id %>"><%= adv.name %></a></li>
+            <% }) %>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h3>Publishers (媒体社)</h3>
+        <ul>
+            <% publishers.forEach(pub => { %>
+                <li><a href="/publisher/<%= pub.id %>"><%= pub.name %></a></li>
+            <% }) %>
+        </ul>
+    </div>
+</body>
+</html>
