@@ -70,6 +70,13 @@ function seed() {
   const insertAd = db.prepare('INSERT INTO ads (id, ad_group_id, title, description, image_url, target_url, status) VALUES (?, ?, ?, ?, ?, ?, ?)');
   ads.forEach(ad => insertAd.run(ad.id, ad.group_id, ad.title, ad.desc, ad.img, ad.url, 'approved'));
 
+  // 5.5 Pending Ads for Review Queue
+  const pendingAds = [
+    { id: 6, group_id: 1, title: 'NovaPad Air - Preorder Now', desc: 'The thinnest tablet ever made.', img: '/images/6.jpeg', url: 'https://example.com/novapad' },
+    { id: 7, group_id: 3, title: 'Vegan Meal Kits', desc: 'Delicious recipes delivered to your door.', img: '/images/7.png', url: 'https://example.com/vegan' },
+  ];
+  pendingAds.forEach(ad => insertAd.run(ad.id, ad.group_id, ad.title, ad.desc, ad.img, ad.url, 'pending'));
+
   // 6. Historical Data (Last 7 Days)
   console.log('📈 Generating historical stats...');
   const insertImp = db.prepare('INSERT INTO impressions (ad_id, publisher_id, user_agent, ip_address, created_at) VALUES (?, ?, ?, ?, ?)');
@@ -80,11 +87,10 @@ function seed() {
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().split('T')[0];
 
-    // 各広告・媒体社の組み合わせでランダムなデータを生成
     ads.forEach(ad => {
       publishers.forEach(pub => {
         const imps = Math.floor(Math.random() * 50) + 10;
-        const clicks = Math.floor(imps * (Math.random() * 0.1)); // 0-10% CTR
+        const clicks = Math.floor(imps * (Math.random() * 0.1));
 
         for (let j = 0; j < imps; j++) {
           insertImp.run(ad.id, pub.id, 'Mozilla/5.0...', '127.0.0.1', `${dateStr} 12:00:00`);
@@ -95,6 +101,29 @@ function seed() {
       });
     });
   }
+
+  // 7. Pending Clicks for Billing Management
+  console.log('💰 Adding pending clicks for billing...');
+  const insertPendingClick = db.prepare('INSERT INTO clicks (ad_id, publisher_id, user_agent, ip_address, processed, created_at) VALUES (?, ?, ?, ?, 0, datetime(\'now\'))');
+  insertPendingClick.run(1, 1, 'Mozilla/5.0...', '192.168.1.5');
+  insertPendingClick.run(2, 2, 'Mozilla/5.0...', '192.168.1.10');
+  insertPendingClick.run(1, 3, 'Mozilla/5.0...', '10.0.0.1');
+
+  // 8. Payout Data (History & Pending)
+  console.log('💸 Adding payout requests and history...');
+  const insertPayout = db.prepare('INSERT INTO payouts (publisher_id, amount, status, created_at, paid_at) VALUES (?, ?, ?, ?, ?)');
+  
+  // Pending request
+  insertPayout.run(1, 5000, 'pending', '2026-03-10 10:00:00', null);
+  insertPayout.run(2, 12000, 'pending', '2026-03-11 09:30:00', null);
+  
+  // Paid history
+  insertPayout.run(1, 3500, 'paid', '2026-02-15 14:00:00', '2026-02-16 10:00:00');
+  insertPayout.run(3, 8200, 'paid', '2026-03-01 11:00:00', '2026-03-02 09:00:00');
+
+  // Update publisher balance/earnings to reflect simulation
+  db.prepare('UPDATE publishers SET balance = balance + 1500, total_earnings = total_earnings + 10000 WHERE id = 1').run();
+  db.prepare('UPDATE publishers SET balance = balance + 2500, total_earnings = total_earnings + 15000 WHERE id = 2').run();
 
   console.log('✅ Seeding completed!');
 }
