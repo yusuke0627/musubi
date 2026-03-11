@@ -63,6 +63,10 @@
                     <h3>Total Earnings</h3>
                     <div class="value">¥<%= publisher.total_earnings.toLocaleString() %></div>
                 </div>
+                <div class="stat-card" title="Your revenue share of the advertiser's bid">
+                    <h3>Revenue Share</h3>
+                    <div class="value"><%= (publisher.rev_share * 100).toFixed(0) %>%</div>
+                </div>
             </div>
 
             <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">

@@ -16,7 +16,8 @@ db.exec(`
     name TEXT NOT NULL,
     domain TEXT NOT NULL,
     balance REAL DEFAULT 0,
-    total_earnings REAL DEFAULT 0
+    total_earnings REAL DEFAULT 0,
+    rev_share REAL DEFAULT 0.7
   );
 
   CREATE TABLE IF NOT EXISTS payouts (
