@@ -31,6 +31,9 @@
         .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; height: 250px; }
         .code-block { background: #333; color: white; padding: 15px; border-radius: 4px; display: block; font-family: monospace; margin-top: 10px; overflow-x: auto; }
         .inline-code { background: #eee; color: #c7254e; padding: 2px 4px; border-radius: 4px; font-family: monospace; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #7f8c8d; font-size: 14px; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -42,7 +45,7 @@
         </header>
 
         <section class="card">
-            <h2>Site Earnings (Estimated)</h2>
+            <h2>Site Earnings & Payout</h2>
             <div class="stats">
                 <div class="stat-card" title="Total times ads were loaded on your site">
                     <h3>Impressions</h3>
@@ -52,7 +55,57 @@
                     <h3>Clicks</h3>
                     <div class="value"><%= stats.clicks %></div>
                 </div>
+                <div class="stat-card" title="Current balance available for payout">
+                    <h3>Current Balance</h3>
+                    <div class="value">¥<%= publisher.balance.toLocaleString() %></div>
+                </div>
+                <div class="stat-card" title="Lifetime total earnings from this site">
+                    <h3>Total Earnings</h3>
+                    <div class="value">¥<%= publisher.total_earnings.toLocaleString() %></div>
+                </div>
             </div>
+
+            <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>Minimum Payout: ¥1,000</strong>
+                    <% if (publisher.balance < 1000) { %>
+                        <p style="color: #666; font-size: 14px; margin: 5px 0 0 0;">You need ¥<%= (1000 - publisher.balance).toLocaleString() %> more to request a payout.</p>
+                    <% } %>
+                </div>
+                <form action="/payouts/request" method="POST">
+                    <input type="hidden" name="publisher_id" value="<%= publisher.id %>">
+                    <button type="submit" <%= publisher.balance < 1000 ? 'disabled' : '' %> 
+                        style="background: <%= publisher.balance < 1000 ? '#ccc' : '#27ae60' %>; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: <%= publisher.balance < 1000 ? 'not-allowed' : 'pointer' %>;">
+                        Request Payout
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Payout History</h2>
+            <table>
+                <thead>
+                    <tr><th>Request Date</th><th>Amount</th><th>Status</th><th>Paid At</th></tr>
+                </thead>
+                <tbody>
+                    <% payouts.forEach(payout => { %>
+                        <tr>
+                            <td><%= new Date(payout.created_at).toLocaleString() %></td>
+                            <td>¥<%= payout.amount.toLocaleString() %></td>
+                            <td>
+                                <span style="background: <%= payout.status === 'paid' ? '#27ae60' : '#f39c12' %>; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">
+                                    <%= payout.status.toUpperCase() %>
+                                </span>
+                            </td>
+                            <td><%= payout.paid_at ? new Date(payout.paid_at).toLocaleString() : '-' %></td>
+                        </tr>
+                    <% }) %>
+                    <% if (payouts.length === 0) { %>
+                        <tr><td colspan="4" style="text-align: center; color: #999;">No payout history.</td></tr>
+                    <% } %>
+                </tbody>
+            </table>
         </section>
 
         <section class="chart-container">

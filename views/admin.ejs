@@ -147,6 +147,54 @@
             </div>
         </section>
 
+        <section class="card" id="payouts">
+            <h2>Payout Management</h2>
+            <h3>Pending Payout Requests</h3>
+            <table>
+                <thead>
+                    <tr><th>Request Date</th><th>Publisher</th><th>Amount</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                    <% pendingPayouts.forEach(payout => { %>
+                        <tr>
+                            <td><%= new Date(payout.created_at).toLocaleString() %></td>
+                            <td><%= payout.publisher_name %></td>
+                            <td>¥<%= payout.amount.toLocaleString() %></td>
+                            <td>
+                                <form action="/admin/payouts/complete" method="POST">
+                                    <input type="hidden" name="payout_id" value="<%= payout.id %>">
+                                    <button type="submit" style="background: #27ae60; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">
+                                        Mark as Paid
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                    <% if (pendingPayouts.length === 0) { %>
+                        <tr><td colspan="4" style="text-align: center; color: #999;">No pending payout requests.</td></tr>
+                    <% } %>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px;">Payout History (Last 50)</h3>
+            <table>
+                <thead>
+                    <tr><th>Request Date</th><th>Paid At</th><th>Publisher</th><th>Amount</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    <% processedPayouts.forEach(payout => { %>
+                        <tr>
+                            <td><%= new Date(payout.created_at).toLocaleString() %></td>
+                            <td><%= new Date(payout.paid_at).toLocaleString() %></td>
+                            <td><%= payout.publisher_name %></td>
+                            <td>¥<%= payout.amount.toLocaleString() %></td>
+                            <td><span style="background: #27ae60; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">PAID</span></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </section>
+
         <section class="card">
             <h2>Registered Advertisers</h2>
             <table>
@@ -162,10 +210,16 @@
         <section class="card">
             <h2>Registered Publishers</h2>
             <table>
-                <thead><tr><th>ID</th><th>Name</th><th>Domain</th></tr></thead>
+                <thead><tr><th>ID</th><th>Name</th><th>Domain</th><th>Balance</th><th>Total Earned</th></tr></thead>
                 <tbody>
                     <% publishers.forEach(pub => { %>
-                        <tr><td><%= pub.id %></td><td><a href="/publisher/<%= pub.id %>"><%= pub.name %></a></td><td><%= pub.domain %></td></tr>
+                        <tr>
+                            <td><%= pub.id %></td>
+                            <td><a href="/publisher/<%= pub.id %>"><%= pub.name %></a></td>
+                            <td><%= pub.domain %></td>
+                            <td>¥<%= pub.balance.toLocaleString() %></td>
+                            <td style="color: #27ae60;">¥<%= pub.total_earnings.toLocaleString() %></td>
+                        </tr>
                     <% }) %>
                 </tbody>
             </table>
