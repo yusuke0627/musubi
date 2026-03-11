@@ -22,6 +22,9 @@ npm install
 # サンプルデータの投入 (Onboarding)
 npx tsx src/scripts/seed.ts
 
+# テストの実行
+npm test
+
 # 開発サーバーの起動 (localhost:3000)
 npm run dev
 ```
