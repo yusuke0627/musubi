@@ -207,10 +207,10 @@
             </table>
         </section>
 
-        <section class="card">
+        <section class="card" id="publishers">
             <h2>Registered Publishers</h2>
             <table>
-                <thead><tr><th>ID</th><th>Name</th><th>Domain</th><th>Balance</th><th>Total Earned</th></tr></thead>
+                <thead><tr><th>ID</th><th>Name</th><th>Domain</th><th>Balance</th><th>Total Earned</th><th>Rev Share (%)</th></tr></thead>
                 <tbody>
                     <% publishers.forEach(pub => { %>
                         <tr>
@@ -219,6 +219,14 @@
                             <td><%= pub.domain %></td>
                             <td>¥<%= pub.balance.toLocaleString() %></td>
                             <td style="color: #27ae60;">¥<%= pub.total_earnings.toLocaleString() %></td>
+                            <td>
+                                <form action="/admin/publishers/update-rev-share" method="POST" style="display: flex; gap: 5px; align-items: center;">
+                                    <input type="hidden" name="publisher_id" value="<%= pub.id %>">
+                                    <input type="number" name="rev_share" value="<%= pub.rev_share %>" step="0.01" min="0" max="1" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                                    <button type="submit" style="background: #34495e; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">Set</button>
+                                </form>
+                                <div style="font-size: 10px; color: #999; margin-top: 2px;">Current: <%= (pub.rev_share * 100).toFixed(0) %>%</div>
+                            </td>
                         </tr>
                     <% }) %>
                 </tbody>

@@ -145,9 +145,15 @@ function runBillingWorker() {
 
       if (result.changes > 0) {
         db.prepare('UPDATE clicks SET is_valid = 1, processed = 1 WHERE id = ?').run(click.id);
-        // パブリッシャーに報酬を加算 (100%レベシェア)
+
+        // パブリッシャー情報を取得 (報酬率を含む)
+        const publisher = db.prepare('SELECT rev_share FROM publishers WHERE id = ?').get(click.publisher_id) as any;
+        const revShare = publisher ? publisher.rev_share : 0.7; // デフォルト 70%
+        const payoutAmount = adInfo.max_bid * revShare;
+
+        // パブリッシャーに報酬を加算
         db.prepare('UPDATE publishers SET balance = balance + ?, total_earnings = total_earnings + ? WHERE id = ?')
-          .run(adInfo.max_bid, adInfo.max_bid, click.publisher_id);
+          .run(payoutAmount, payoutAmount, click.publisher_id);
       } else {
         db.prepare('UPDATE clicks SET is_valid = 0, processed = 1, invalid_reason = ? WHERE id = ?')
           .run('Insufficient advertiser balance', click.id);
@@ -349,6 +355,14 @@ app.post('/admin/payouts/complete', (req, res) => {
   db.prepare('UPDATE payouts SET status = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?')
     .run('paid', payout_id);
   res.redirect('/admin#payouts');
+});
+
+// 報酬率の更新 (Admin)
+app.post('/admin/publishers/update-rev-share', (req, res) => {
+  const { publisher_id, rev_share } = req.body;
+  db.prepare('UPDATE publishers SET rev_share = ? WHERE id = ?')
+    .run(parseFloat(rev_share), publisher_id);
+  res.redirect('/admin#publishers');
 });
 
 // 媒体社画面 (Publisher)
