@@ -24,21 +24,22 @@ app.get('/serve', (req, res) => {
   const isMobile = /Mobi|Android/i.test(ua);
   const currentDevice = isMobile ? 'mobile' : 'desktop';
 
-  // RTB簡易版：ターゲティング条件に合致し、かつ広告主の残高が入札額以上のものから1件取得
+  // RTB簡易版：AdGroups の条件に合致し、かつ広告主の残高が入札額以上のものから1件取得
   const ad = db.prepare(`
-    SELECT ads.* FROM ads 
-    JOIN campaigns ON ads.campaign_id = campaigns.id
+    SELECT ads.*, ad_groups.max_bid FROM ads 
+    JOIN ad_groups ON ads.ad_group_id = ad_groups.id
+    JOIN campaigns ON ad_groups.campaign_id = campaigns.id
     JOIN advertisers ON campaigns.advertiser_id = advertisers.id
-    WHERE advertisers.balance >= ads.max_bid
+    WHERE advertisers.balance >= ad_groups.max_bid
       -- デバイスターゲティング
-      AND (campaigns.target_device = 'all' OR campaigns.target_device = ?)
+      AND (ad_groups.target_device = 'all' OR ad_groups.target_device = ?)
       -- 媒体ターゲティング (カンマ区切りIDリストに含まれるか判定)
-      AND (campaigns.target_publisher_ids = 'all' OR ',' || campaigns.target_publisher_ids || ',' LIKE ?)
-    ORDER BY ads.max_bid DESC LIMIT 1
+      AND (ad_groups.target_publisher_ids = 'all' OR ',' || ad_groups.target_publisher_ids || ',' LIKE ?)
+    ORDER BY ad_groups.max_bid DESC LIMIT 1
   `).get(currentDevice, `%,${publisherId},%`) as any;
 
   if (!ad) {
-    return res.status(204).send(); // 広告なし（またはターゲット外）
+    return res.status(204).send();
   }
 
   // インプレッションを記録
@@ -69,7 +70,7 @@ app.get('/click', (req, res) => {
   const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const userAgent = req.headers['user-agent'];
 
-  // 高速リダイレクト：DBへのログ挿入のみを行い、予算減算は後回しにする
+  // 高速リダイレクト：DBへのログ挿入のみ
   try {
     const ad = db.prepare('SELECT target_url FROM ads WHERE id = ?').get(ad_id) as any;
     if (ad) {
@@ -91,15 +92,10 @@ app.get('/click', (req, res) => {
 
 function runBillingWorker() {
   const processBatch = db.transaction(() => {
-    // 1. 未処理のクリックをまとめて取得
     const unprocessedClicks = db.prepare('SELECT * FROM clicks WHERE processed = 0 ORDER BY created_at ASC').all() as any[];
     if (unprocessedClicks.length === 0) return 0;
 
-    console.log(`[BillingWorker] Processing ${unprocessedClicks.length} clicks...`);
-
     for (const click of unprocessedClicks) {
-      // 2. 不正クリック検知（同一IP・短時間重複）
-      // 直前10秒以内に、既に「有効(is_valid=1)」と判定された同じIP・広告のクリックがあるか確認
       const duplicate = db.prepare(`
         SELECT id FROM clicks 
         WHERE ad_id = ? AND ip_address = ? AND is_valid = 1 AND id < ?
@@ -108,16 +104,16 @@ function runBillingWorker() {
       `).get(click.ad_id, click.ip_address, click.id, click.created_at);
 
       if (duplicate) {
-        // 重複判定：無効化してスキップ
         db.prepare('UPDATE clicks SET is_valid = 0, processed = 1 WHERE id = ?').run(click.id);
         continue;
       }
 
-      // 3. 広告情報の取得（入札額と広告主ID）
+      // 広告グループから入札額を取得
       const adInfo = db.prepare(`
-        SELECT ads.max_bid, campaigns.advertiser_id 
+        SELECT ad_groups.max_bid, campaigns.advertiser_id 
         FROM ads 
-        JOIN campaigns ON ads.campaign_id = campaigns.id 
+        JOIN ad_groups ON ads.ad_group_id = ad_groups.id 
+        JOIN campaigns ON ad_groups.campaign_id = campaigns.id 
         WHERE ads.id = ?
       `).get(click.ad_id) as any;
 
@@ -126,26 +122,20 @@ function runBillingWorker() {
         continue;
       }
 
-      // 4. 予算減算
       const result = db.prepare('UPDATE advertisers SET balance = balance - ? WHERE id = ? AND balance >= ?')
         .run(adInfo.max_bid, adInfo.advertiser_id, adInfo.max_bid);
 
       if (result.changes > 0) {
-        // 成功
         db.prepare('UPDATE clicks SET is_valid = 1, processed = 1 WHERE id = ?').run(click.id);
       } else {
-        // 予算不足などの場合は無効化（実際にはリトライなどの検討が必要）
         db.prepare('UPDATE clicks SET is_valid = 0, processed = 1 WHERE id = ?').run(click.id);
       }
     }
     return unprocessedClicks.length;
   });
-
+  
   try {
-    const processedCount = processBatch();
-    if (processedCount > 0) {
-      console.log(`[BillingWorker] Successfully processed ${processedCount} clicks.`);
-    }
+    processBatch();
   } catch (err) {
     console.error('[BillingWorker] Error:', err);
   }
@@ -165,8 +155,8 @@ function getDailyStats(filter: { advertiserId?: string, publisherId?: string } =
   const params: any[] = [];
 
   if (filter.advertiserId) {
-    whereImp += ' AND ad_id IN (SELECT ads.id FROM ads JOIN campaigns ON ads.campaign_id = campaigns.id WHERE campaigns.advertiser_id = ?)';
-    whereClick += ' AND ad_id IN (SELECT ads.id FROM ads JOIN campaigns ON ads.campaign_id = campaigns.id WHERE campaigns.advertiser_id = ?)';
+    whereImp += ' AND ad_id IN (SELECT ads.id FROM ads JOIN ad_groups ON ads.ad_group_id = ad_groups.id JOIN campaigns ON ad_groups.campaign_id = campaigns.id WHERE campaigns.advertiser_id = ?)';
+    whereClick += ' AND ad_id IN (SELECT ads.id FROM ads JOIN ad_groups ON ads.ad_group_id = ad_groups.id JOIN campaigns ON ad_groups.campaign_id = campaigns.id WHERE campaigns.advertiser_id = ?)';
     params.push(filter.advertiserId);
   }
   if (filter.publisherId) {
@@ -210,51 +200,62 @@ app.get('/admin', (req, res) => {
 
   const advertisers = db.prepare('SELECT * FROM advertisers').all();
   const publishers = db.prepare('SELECT * FROM publishers').all();
+  const adGroups = db.prepare('SELECT ad_groups.*, campaigns.name as campaign_name FROM ad_groups JOIN campaigns ON ad_groups.campaign_id = campaigns.id').all();
   const ads = db.prepare(`
-    SELECT ads.*, advertisers.name as advertiser_name,
+    SELECT ads.*, advertisers.name as advertiser_name, ad_groups.name as ad_group_name, ad_groups.max_bid as current_bid,
     (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
     (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as clicks
     FROM ads
-    JOIN campaigns ON ads.campaign_id = campaigns.id
+    JOIN ad_groups ON ads.ad_group_id = ad_groups.id
+    JOIN campaigns ON ad_groups.campaign_id = campaigns.id
     JOIN advertisers ON campaigns.advertiser_id = advertisers.id
   `).all();
 
   const dailyStats = getDailyStats();
-  res.render('admin', { stats, advertisers, publishers, ads, dailyStats });
+  res.render('admin', { stats, advertisers, publishers, adGroups, ads, dailyStats });
 });
 
 // 広告主画面 (Advertiser)
 app.get('/advertiser/:id', (req, res) => {
   const advertiserId = req.params.id;
   const advertiser = db.prepare('SELECT * FROM advertisers WHERE id = ?').get(advertiserId) as any;
-  
+
   if (!advertiser) return res.status(404).send('Advertiser not found');
 
   const campaigns = db.prepare('SELECT * FROM campaigns WHERE advertiser_id = ?').all(advertiserId);
+  const adGroups = db.prepare('SELECT ad_groups.*, campaigns.name as campaign_name FROM ad_groups JOIN campaigns ON ad_groups.campaign_id = campaigns.id WHERE campaigns.advertiser_id = ?').all(advertiserId);
   const publishers = db.prepare('SELECT id, name FROM publishers').all();
 
   const ads = db.prepare(`
-    SELECT ads.*,
+    SELECT ads.*, ad_groups.name as ad_group_name,
     (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
     (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as clicks
     FROM ads
-    JOIN campaigns ON ads.campaign_id = campaigns.id
+    JOIN ad_groups ON ads.ad_group_id = ad_groups.id
+    JOIN campaigns ON ad_groups.campaign_id = campaigns.id
     WHERE campaigns.advertiser_id = ?
     ORDER BY ads.id DESC
   `).all(advertiserId);
 
   const dailyStats = getDailyStats({ advertiserId });
-  res.render('advertiser', { advertiser, campaigns, publishers, ads, dailyStats });
+  res.render('advertiser', { advertiser, campaigns, adGroups, publishers, ads, dailyStats });
 });
 
 // キャンペーンの新規作成
 app.post('/campaigns', (req, res) => {
-  const { advertiser_id, name, target_device, target_publishers } = req.body;
+  const { advertiser_id, name, budget } = req.body;
+  db.prepare('INSERT INTO campaigns (advertiser_id, name, budget) VALUES (?, ?, ?)')
+    .run(advertiser_id, name, budget || 0);
+  res.redirect(`/advertiser/${advertiser_id}`);
+});
+
+// アドグループの新規作成
+app.post('/ad_groups', (req, res) => {
+  const { advertiser_id, campaign_id, name, max_bid, target_device, target_publishers } = req.body;
 
   let publisherIds = 'all';
   if (target_publishers) {
     const selected = Array.isArray(target_publishers) ? target_publishers : [target_publishers];
-    // 'all' が含まれているか、何も選択されていない（実際にはHTMLの仕様上ここには来ないが）場合は 'all'
     if (selected.includes('all') || selected.length === 0) {
       publisherIds = 'all';
     } else {
@@ -262,23 +263,19 @@ app.post('/campaigns', (req, res) => {
     }
   }
 
-  db.prepare('INSERT INTO campaigns (advertiser_id, name, target_device, target_publisher_ids) VALUES (?, ?, ?, ?)')
-    .run(advertiser_id, name, target_device, publisherIds);
+  db.prepare('INSERT INTO ad_groups (campaign_id, name, max_bid, target_device, target_publisher_ids) VALUES (?, ?, ?, ?, ?)')
+    .run(campaign_id, name, max_bid, target_device, publisherIds);
 
   res.redirect(`/advertiser/${advertiser_id}`);
 });
 
-// 広告の新規入稿 (広告主用)
+// 広告の新規入稿
 app.post('/ads', (req, res) => {
-  const { advertiser_id, campaign_id, title, description, image_url, target_url, max_bid } = req.body;
-  const bid = max_bid ? parseFloat(max_bid) : 10;
-
-  db.prepare('INSERT INTO ads (campaign_id, title, description, image_url, target_url, max_bid) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(campaign_id, title, description, image_url, target_url, bid);
-
+  const { advertiser_id, ad_group_id, title, description, image_url, target_url } = req.body;
+  db.prepare('INSERT INTO ads (ad_group_id, title, description, image_url, target_url) VALUES (?, ?, ?, ?, ?)')
+    .run(ad_group_id, title, description, image_url, target_url);
   res.redirect(`/advertiser/${advertiser_id}`);
 });
-
 // 媒体社画面 (Publisher)
 app.get('/publisher/:id', (req, res) => {
   const publisherId = req.params.id;
