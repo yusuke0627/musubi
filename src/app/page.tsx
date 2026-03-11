@@ -8,8 +8,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto text-center">
-        <h1 className="text-4xl font-extrabold text-gray-900 mb-2">AdNetwork Platform</h1>
-        <p className="text-lg text-gray-600 mb-12">ログインするアカウントを選択してください（デモ用）</p>
+        <h1 className="text-5xl font-extrabold text-slate-900 mb-4 tracking-tight">Musubi</h1>
+        <p className="text-xl text-slate-600 mb-12 italic">Connecting Value, Bridging Growth.</p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Admin Card */}
