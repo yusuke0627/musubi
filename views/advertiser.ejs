@@ -14,7 +14,23 @@
         button { background: #2980b9; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
-        th[title] { cursor: help; border-bottom: 1px dashed #bbb; }
+        th[title] { position: relative; cursor: help; border-bottom: 1px dashed #bbb; }
+        th[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2c3e50;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 100;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
         .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; height: 250px; }
         .preview-img { width: 80px; border-radius: 4px; border: 1px solid #eee; }
     </style>
