@@ -73,14 +73,62 @@
         </script>
 
         <section class="card">
-            <h2>Create New Ad</h2>
+            <h2>Step 1: Create New Campaign (Targeting)</h2>
+            <form action="/campaigns" method="POST">
+                <input type="hidden" name="advertiser_id" value="<%= advertiser.id %>">
+                <div class="form-group">
+                    <label>Campaign Name:</label>
+                    <input type="text" name="name" placeholder="e.g. Winter Sale" required>
+                </div>
+                <div class="form-group">
+                    <label>Target Device:</label><br>
+                    <input type="radio" name="target_device" value="all" checked> All
+                    <input type="radio" name="target_device" value="desktop"> Desktop Only
+                    <input type="radio" name="target_device" value="mobile"> Mobile Only
+                </div>
+                <div class="form-group">
+                    <label>Target Publishers:</label><br>
+                    <input type="checkbox" name="target_publishers" value="all" checked> All Sites<br>
+                    <% publishers.forEach(pub => { %>
+                        <input type="checkbox" name="target_publishers" value="<%= pub.id %>"> <%= pub.name %> (<%= pub.domain %>)<br>
+                    <% }) %>
+                </div>
+                <button type="submit" style="background: #27ae60;">Create Campaign</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Step 2: Create New Ad (Creative)</h2>
             <form action="/ads" method="POST">
                 <input type="hidden" name="advertiser_id" value="<%= advertiser.id %>">
-                <input type="text" name="title" placeholder="Ad Title" required>
-                <textarea name="description" placeholder="Short description..."></textarea>
-                <input type="url" name="image_url" placeholder="Image URL" value="https://placehold.jp/300x250.png?text=New+Ad" required>
-                <input type="url" name="target_url" placeholder="Target URL" required>
-                <input type="number" name="max_bid" placeholder="Max Bid (¥)" required>
+                <div class="form-group">
+                    <label>Select Campaign:</label>
+                    <select name="campaign_id" required>
+                        <% campaigns.forEach(camp => { %>
+                            <option value="<%= camp.id %>"><%= camp.name %> (Device: <%= camp.target_device %>)</option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Title:</label>
+                    <input type="text" name="title" placeholder="Ad Title" required>
+                </div>
+                <div class="form-group">
+                    <label>Description:</label>
+                    <textarea name="description" placeholder="Short description..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Image URL:</label>
+                    <input type="url" name="image_url" placeholder="Image URL" value="https://placehold.jp/300x250.png?text=New+Ad" required>
+                </div>
+                <div class="form-group">
+                    <label>Target URL:</label>
+                    <input type="url" name="target_url" placeholder="Target URL" required>
+                </div>
+                <div class="form-group">
+                    <label>Max Bid (¥):</label>
+                    <input type="number" name="max_bid" placeholder="Max Bid (¥)" required>
+                </div>
                 <button type="submit">Publish Ad</button>
             </form>
         </section>

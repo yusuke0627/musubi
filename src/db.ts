@@ -22,6 +22,8 @@ db.exec(`
     advertiser_id INTEGER,
     name TEXT NOT NULL,
     budget REAL DEFAULT 0,
+    target_device TEXT DEFAULT 'all',
+    target_publisher_ids TEXT DEFAULT 'all',
     FOREIGN KEY(advertiser_id) REFERENCES advertisers(id)
   );
 
@@ -68,10 +70,13 @@ insertAdvertiser.run(2, 'Low Balance Advertiser (Poor)', 250); // 3回クリッ�
 
 const insertPublisher = db.prepare('INSERT OR IGNORE INTO publishers (id, name, domain) VALUES (?, ?, ?)');
 insertPublisher.run(1, 'Sample Publisher Site', 'example.com');
+insertPublisher.run(2, 'Second Publisher Site', 'news.example.jp');
 
-const insertCampaign = db.prepare('INSERT OR IGNORE INTO campaigns (id, advertiser_id, name, budget) VALUES (?, ?, ?, ?)');
-insertCampaign.run(1, 1, 'Winter Sale 2026', 50000);
-insertCampaign.run(2, 2, 'Flash Sale', 500);
+const insertCampaign = db.prepare('INSERT OR IGNORE INTO campaigns (id, advertiser_id, name, budget, target_device, target_publisher_ids) VALUES (?, ?, ?, ?, ?, ?)');
+// キャンペーン1: 全配信
+insertCampaign.run(1, 1, 'Main Campaign (All)', 50000, 'all', 'all');
+// キャンペーン2: モバイル/サイト1限定
+insertCampaign.run(2, 2, 'Mobile Only Campaign', 500, 'mobile', '1');
 
 const insertAd = db.prepare('INSERT OR IGNORE INTO ads (id, campaign_id, title, description, image_url, target_url, max_bid) VALUES (?, ?, ?, ?, ?, ?, ?)');
 // ID:1 は入札額 50円（2位）
