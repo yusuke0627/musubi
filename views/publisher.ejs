@@ -11,6 +11,23 @@
         .stats { display: flex; gap: 20px; }
         .stat-card { background: #fff; padding: 20px; border-radius: 8px; flex: 1; text-align: center; }
         .value { font-size: 24px; font-weight: bold; color: #27ae60; }
+        .stat-card[title], th[title] { position: relative; cursor: help; }
+        .stat-card[title]:hover::after, th[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 105%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2c3e50;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 100;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
         .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; height: 250px; }
         .code-block { background: #333; color: white; padding: 15px; border-radius: 4px; display: block; font-family: monospace; margin-top: 10px; overflow-x: auto; }
         .inline-code { background: #eee; color: #c7254e; padding: 2px 4px; border-radius: 4px; font-family: monospace; }
@@ -27,11 +44,11 @@
         <section class="card">
             <h2>Site Earnings (Estimated)</h2>
             <div class="stats">
-                <div class="stat-card">
+                <div class="stat-card" title="Total times ads were loaded on your site">
                     <h3>Impressions</h3>
                     <div class="value"><%= stats.impressions %></div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" title="Total times users clicked ads on your site">
                     <h3>Clicks</h3>
                     <div class="value"><%= stats.clicks %></div>
                 </div>
