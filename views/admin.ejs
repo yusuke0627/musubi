@@ -207,6 +207,49 @@
             </table>
         </section>
 
+        <section class="card" id="ad-review">
+            <h2>Ad Review Queue</h2>
+            <table>
+                <thead>
+                    <tr><th>Preview</th><th>Ad Info</th><th>Advertiser</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                    <% pendingAds.forEach(ad => { %>
+                        <tr>
+                            <td style="width: 150px;"><img src="<%= ad.image_url %>" style="width: 100%; border-radius: 4px;"></td>
+                            <td>
+                                <strong><%= ad.title %></strong><br>
+                                <small><%= ad.description %></small><br>
+                                <a href="<%= ad.target_url %>" target="_blank" style="font-size: 11px;">Target URL</a>
+                            </td>
+                            <td><%= ad.advertiser_name %></td>
+                            <td>
+                                <div style="display: flex; gap: 10px;">
+                                    <form action="/admin/ads/review" method="POST">
+                                        <input type="hidden" name="ad_id" value="<%= ad.id %>">
+                                        <input type="hidden" name="action" value="approve">
+                                        <button type="submit" style="background: #27ae60; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Approve</button>
+                                    </form>
+                                    <button onclick="document.getElementById('reject-form-<%= ad.id %>').style.display='block'" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Reject</button>
+                                </div>
+                                <div id="reject-form-<%= ad.id %>" style="display: none; margin-top: 10px; background: #f9f9f9; padding: 10px; border-radius: 4px; border: 1px solid #ddd;">
+                                    <form action="/admin/ads/review" method="POST">
+                                        <input type="hidden" name="ad_id" value="<%= ad.id %>">
+                                        <input type="hidden" name="action" value="reject">
+                                        <textarea name="rejection_reason" placeholder="Reason for rejection..." required style="width: 100%; margin-bottom: 5px; padding: 5px;"></textarea>
+                                        <button type="submit" style="background: #c0392b; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Confirm Rejection</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    <% }) %>
+                    <% if (pendingAds.length === 0) { %>
+                        <tr><td colspan="4" style="text-align: center; color: #999;">No ads pending review.</td></tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </section>
+
         <section class="card" id="publishers">
             <h2>Registered Publishers</h2>
             <table>
@@ -239,26 +282,30 @@
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Preview</th>
                         <th>Title</th>
                         <th>Advertiser</th>
-                        <th>Ad Group</th>
+                        <th>Status</th>
                         <th>Imps</th>
                         <th>Clicks</th>
                         <th title="Bid per Click (CPC)">Bid</th>
-                        <th title="Expected Revenue per 1000 Impressions (Bid x CTR x 1000)">Score (eCPM)</th>
                     </tr>
                 </thead>
                 <tbody>
                     <% ads.forEach(ad => { %>
                         <tr>
                             <td><%= ad.id %></td>
+                            <td><img src="<%= ad.image_url %>" style="width: 50px; border-radius: 2px;"></td>
                             <td><strong><%= ad.title %></strong></td>
                             <td><%= ad.advertiser_name %></td>
-                            <td><%= ad.ad_group_name %></td>
+                            <td>
+                                <span style="background: <%= ad.status === 'approved' ? '#27ae60' : (ad.status === 'rejected' ? '#e74c3c' : '#f1c40f') %>; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">
+                                    <%= ad.status.toUpperCase() %>
+                                </span>
+                            </td>
                             <td><%= ad.impressions %></td>
                             <td><%= ad.clicks %></td>
                             <td>¥<%= ad.current_bid %></td>
-                            <td style="color: #27ae60; font-weight: bold;"><%= (ad.score * 1000).toFixed(2) %></td>
                         </tr>
                     <% }) %>
                 </tbody>

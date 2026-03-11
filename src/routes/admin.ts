@@ -41,7 +41,10 @@ router.get('/', (req, res) => {
   const pendingPayouts = db.prepare('SELECT payouts.*, publishers.name as publisher_name FROM payouts JOIN publishers ON payouts.publisher_id = publishers.id WHERE status = \'pending\' ORDER BY created_at ASC').all();
   const processedPayouts = db.prepare('SELECT payouts.*, publishers.name as publisher_name FROM payouts JOIN publishers ON payouts.publisher_id = publishers.id WHERE status = \'paid\' ORDER BY paid_at DESC LIMIT 50').all();
 
-  res.render('admin', { stats, advertisers, publishers, adGroups, ads, dailyStats, pendingClicks, processedClicks, pendingPayouts, processedPayouts });
+  // 審査待ち広告の取得
+  const pendingAds = db.prepare('SELECT ads.*, advertisers.name as advertiser_name FROM ads JOIN ad_groups ON ads.ad_group_id = ad_groups.id JOIN campaigns ON ad_groups.campaign_id = campaigns.id JOIN advertisers ON campaigns.advertiser_id = advertisers.id WHERE ads.status = \'pending\' ORDER BY ads.id ASC').all();
+
+  res.render('admin', { stats, advertisers, publishers, adGroups, ads, dailyStats, pendingClicks, processedClicks, pendingPayouts, processedPayouts, pendingAds });
 });
 
 // 手動クリック処理（バッチ実行）
@@ -68,6 +71,17 @@ router.post('/publishers/update-rev-share', (req, res) => {
   db.prepare('UPDATE publishers SET rev_share = ? WHERE id = ?')
     .run(parseFloat(rev_share), publisher_id);
   res.redirect('/admin#publishers');
+});
+
+// 広告審査
+router.post('/ads/review', (req, res) => {
+  const { ad_id, action, rejection_reason } = req.body;
+  const status = action === 'approve' ? 'approved' : 'rejected';
+  
+  db.prepare('UPDATE ads SET status = ?, rejection_reason = ? WHERE id = ?')
+    .run(status, status === 'rejected' ? rejection_reason : null, ad_id);
+  
+  res.redirect('/admin#ad-review');
 });
 
 export default router;

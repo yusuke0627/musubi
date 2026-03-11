@@ -33,7 +33,8 @@ router.get('/serve', (req, res) => {
       JOIN ad_groups ON ads.ad_group_id = ad_groups.id
       JOIN campaigns ON ad_groups.campaign_id = campaigns.id
       JOIN advertisers ON campaigns.advertiser_id = advertisers.id
-      WHERE advertisers.balance >= ad_groups.max_bid
+      WHERE ads.status = 'approved'
+        AND advertisers.balance >= ad_groups.max_bid
         AND (ad_groups.target_device = 'all' OR ad_groups.target_device = ?)
         AND (ad_groups.target_publisher_ids = 'all' OR ',' || ad_groups.target_publisher_ids || ',' LIKE ?)
     )

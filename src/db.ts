@@ -55,6 +55,8 @@ db.exec(`
     description TEXT,
     image_url TEXT,
     target_url TEXT NOT NULL,
+    status TEXT DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
+    rejection_reason TEXT,
     FOREIGN KEY(ad_group_id) REFERENCES ad_groups(id)
   );
 
