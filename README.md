@@ -1,81 +1,36 @@
-# AdNetwork Prototype
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-本プロジェクトは、**プログラマティック広告（Programmatic Advertising）**のエコシステムをシミュレートする、フルスタック・アドネットワークのプロトタイプです。
+## Getting Started
 
-広告主（DSP的役割）、媒体社（SSP側）、およびそれらを繋ぐアドエクスチェンジ機能を1つのシステムに統合し、リアルタイム取引の基礎ロジックを実装しています。
+First, run the development server:
 
----
-
-## 🚀 クイックスタート (Developer)
-
-### 技術スタック
-- **Runtime**: Node.js
-- **Language**: TypeScript (`tsx`)
-- **Framework**: Express
-- **Database**: SQLite (`better-sqlite3`)
-- **Template Engine**: EJS
-- **Frontend**: Vanilla CSS, Chart.js
-
-### セットアップ
 ```bash
-npm install
-npm start
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-### アーキテクチャ（役割別の分割）
-- `src/services/`: 
-  - `billing.ts`: クリック確定・報酬計算（レベニューシェア計算含む）
-  - `stats.ts`: 統計集計（eCPM, CTR, Imps）
-- `src/routes/`: 
-  - `admin.ts`: **プラットフォーマー (Ad Exchange)** 機能
-  - `advertiser.ts`: **広告主 (DSP)** 機能
-  - `publisher.ts`: **媒体社 (SSP)** 機能
-  - `delivery.ts`: 配信エンジン & トラッキング
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
----
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## 📈 広告主 / DSP (Demand-Side Platform) 機能
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-- **eCPM オークションロジック**: 入札価格 × 予測CTR に基づく動的な配信優先度決定。
-- **ターゲティング設定**: デバイス（PC/Mobile）および配信先ドメインのホワイトリスト指定。
-- **入稿審査フロー**: 管理者による承認制配信。不承認理由のフィードバック機能。
+## Learn More
 
----
+To learn more about Next.js, take a look at the following resources:
 
-## 💰 媒体社 / SSP (Supply-Side Platform) 機能
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-- **リアルタイム収益化**: 専用の `<iframe>` タグによる RTB シミュレーション。
-- **収益管理**: パブリッシャー個別の Revenue Share 設定、最低支払い金額（1,000円）からの支払い申請システム。
-- **パフォーマンス可視化**: サイト別・日別のインプレッション、クリック、推定収益のグラフ化。
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
----
+## Deploy on Vercel
 
-## 🛡️ プラットフォーム / Ad Exchange 機能
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-- **アドクオリティ管理 (Ad Review)**: クリエイティブ審査によるネットワーク品質の担保。
-- **マージン管理**: パブリッシャーごとの報酬率調整による利益最大化。
-- **インバリッドトラフィック対策 (Billing)**: Billing Worker による重複クリック排除と予算・報酬の確定。
-
----
-
-## 🛠 今後の展望 (Roadmap)
-
-最新の戦略的ロードマップに基づき、以下の機能を段階的に実装します。
-
-### 短期タスク（1年以内）
-- [ ] **高度な不正検知 (IVT対策)**: ボット検知ロジックの実装と、怪しいIPアドレスのブラックリスト管理機能。
-- [ ] **ads.txt / app-ads.txt 自動生成**: パブリッシャーダッシュボードで、認定販売者情報をワンクリックで取得できる機能。
-- [ ] **配信先別レポート (Placement Report)**: 広告主が「どのサイトで成果が出ているか」を詳細に分析できる機能。
-- [ ] **リアルタイム通知システム**: 広告承認完了や予算不足、支払いリクエストの進捗をメールやダッシュボードで通知。
-- [ ] **クリエイティブ最適化**: 1つの入稿から、複数サイズの広告枠（300x250, 728x90等）に自動適応させる仕組み。
-
-### 中長期タスク
-- [ ] **DMP (Data Management Platform) 連携**: ユーザーの興味関心に基づいたオーディエンスターゲティング。
-- [ ] **ヘッダービディング (Header Bidding)**: Prebid.js 等を想定した、複数SSP間での並列競りロジック。
-- [ ] **Vast/Vpaid 対応**: 動画広告フォーマットのサポート。
-
----
-
-## 📖 参考資料
-- [アドネットワークやプログラマティック広告の基礎概念](https://gist.github.com/yusuke0627/501039cbd62635c6f7d0a245a73fcdd6)
-- [アドネットワーク戦略ロードマップ 2026](https://gemini.google.com/share/7e8b19c2956d)
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
