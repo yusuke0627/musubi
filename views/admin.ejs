@@ -11,10 +11,12 @@
         .stat-card { background: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .value { font-size: 28px; font-weight: bold; color: #2980b9; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; height: 300px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
         th { background: #f8f9fa; color: #7f8c8d; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
@@ -28,6 +30,48 @@
             <div class="stat-card"><h3>Network Clicks</h3><div class="value"><%= stats.total_clicks %></div></div>
             <div class="stat-card"><h3>CTR (%)</h3><div class="value"><%= stats.total_impressions > 0 ? ((stats.total_clicks / stats.total_impressions) * 100).toFixed(2) : 0 %>%</div></div>
         </section>
+
+        <section class="chart-container">
+            <canvas id="performanceChart"></canvas>
+        </section>
+
+        <script>
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            const dailyData = <%- JSON.stringify(dailyStats) %>;
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dailyData.map(d => d.date),
+                    datasets: [
+                        {
+                            label: 'Impressions',
+                            data: dailyData.map(d => d.impressions),
+                            borderColor: '#2980b9',
+                            backgroundColor: 'rgba(41, 128, 185, 0.1)',
+                            fill: true,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Clicks',
+                            data: dailyData.map(d => d.clicks),
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            fill: true,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Impressions' } },
+                        y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Clicks' } }
+                    }
+                }
+            });
+        </script>
 
         <section class="card">
             <h2>Registered Advertisers</h2>

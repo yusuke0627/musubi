@@ -108,6 +108,41 @@ app.get('/click', (req, res) => {
 // 3. ダッシュボード (Admin/Advertiser/Publisher)
 // ---------------------------------------------------------
 
+// 過去7日間の日別統計を取得するヘルパー関数
+function getDailyStats(filter: { advertiserId?: string, publisherId?: string } = {}) {
+  let whereImp = 'WHERE created_at >= date(\'now\', \'-6 days\')';
+  let whereClick = 'WHERE created_at >= date(\'now\', \'-6 days\')';
+  const params: any[] = [];
+
+  if (filter.advertiserId) {
+    whereImp += ' AND ad_id IN (SELECT ads.id FROM ads JOIN campaigns ON ads.campaign_id = campaigns.id WHERE campaigns.advertiser_id = ?)';
+    whereClick += ' AND ad_id IN (SELECT ads.id FROM ads JOIN campaigns ON ads.campaign_id = campaigns.id WHERE campaigns.advertiser_id = ?)';
+    params.push(filter.advertiserId);
+  }
+  if (filter.publisherId) {
+    whereImp += ' AND publisher_id = ?';
+    whereClick += ' AND publisher_id = ?';
+    params.push(filter.publisherId);
+  }
+
+  const query = `
+    WITH RECURSIVE dates(date) AS (
+      SELECT date('now', '-6 days')
+      UNION ALL
+      SELECT date(date, '+1 day') FROM dates WHERE date < date('now')
+    )
+    SELECT 
+      d.date,
+      (SELECT COUNT(*) FROM impressions ${whereImp} AND date(created_at) = d.date) as impressions,
+      (SELECT COUNT(*) FROM clicks ${whereClick} AND date(created_at) = d.date) as clicks
+    FROM dates d
+  `;
+
+  // パラメータは whereImp と whereClick で同じものを2回使うため調整
+  const queryParams = filter.advertiserId || filter.publisherId ? [...params, ...params] : [];
+  return db.prepare(query).all(...queryParams);
+}
+
 // ポータル画面（各画面へのリンク）
 app.get('/', (req, res) => {
   const advertisers = db.prepare('SELECT id, name FROM advertisers').all();
@@ -134,7 +169,8 @@ app.get('/admin', (req, res) => {
     JOIN advertisers ON campaigns.advertiser_id = advertisers.id
   `).all();
 
-  res.render('admin', { stats, advertisers, publishers, ads });
+  const dailyStats = getDailyStats();
+  res.render('admin', { stats, advertisers, publishers, ads, dailyStats });
 });
 
 // 広告主画面 (Advertiser)
@@ -154,7 +190,8 @@ app.get('/advertiser/:id', (req, res) => {
     ORDER BY ads.id DESC
   `).all(advertiserId);
 
-  res.render('advertiser', { advertiser, ads });
+  const dailyStats = getDailyStats({ advertiserId });
+  res.render('advertiser', { advertiser, ads, dailyStats });
 });
 
 // 媒体社画面 (Publisher)
@@ -170,7 +207,8 @@ app.get('/publisher/:id', (req, res) => {
       (SELECT COUNT(*) FROM clicks WHERE publisher_id = ?) as clicks
   `).get(publisherId, publisherId) as any;
 
-  res.render('publisher', { publisher, stats, port: PORT });
+  const dailyStats = getDailyStats({ publisherId });
+  res.render('publisher', { publisher, stats, port: PORT, dailyStats });
 });
 
 // 広告の新規入稿 (広告主用)
