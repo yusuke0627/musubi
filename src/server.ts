@@ -18,23 +18,32 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/serve', (req, res) => {
   const publisherId = req.query.publisher_id;
   const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const ua = req.headers['user-agent'] || '';
   
-  // RTB簡易版：広告主の残高が入札額以上のものから、最も入札額（max_bid）が高い広告を1件取得する
+  // 簡易デバイス判定
+  const isMobile = /Mobi|Android/i.test(ua);
+  const currentDevice = isMobile ? 'mobile' : 'desktop';
+
+  // RTB簡易版：ターゲティング条件に合致し、かつ広告主の残高が入札額以上のものから1件取得
   const ad = db.prepare(`
     SELECT ads.* FROM ads 
     JOIN campaigns ON ads.campaign_id = campaigns.id
     JOIN advertisers ON campaigns.advertiser_id = advertisers.id
     WHERE advertisers.balance >= ads.max_bid
+      -- デバイスターゲティング
+      AND (campaigns.target_device = 'all' OR campaigns.target_device = ?)
+      -- 媒体ターゲティング (カンマ区切りIDリストに含まれるか判定)
+      AND (campaigns.target_publisher_ids = 'all' OR ',' || campaigns.target_publisher_ids || ',' LIKE ?)
     ORDER BY ads.max_bid DESC LIMIT 1
-  `).get() as any;
+  `).get(currentDevice, `%,${publisherId},%`) as any;
 
   if (!ad) {
-    return res.status(204).send(); // 広告なし（または予算切れ）
+    return res.status(204).send(); // 広告なし（またはターゲット外）
   }
 
   // インプレッションを記録
   db.prepare('INSERT INTO impressions (ad_id, publisher_id, user_agent, ip_address) VALUES (?, ?, ?, ?)')
-    .run(ad.id, publisherId, req.headers['user-agent'], ip);
+    .run(ad.id, publisherId, ua, ip);
 
   // シンプルなHTML断片を返す
   const clickUrl = `http://localhost:${PORT}/click?ad_id=${ad.id}&publisher_id=${publisherId}`;
@@ -221,6 +230,9 @@ app.get('/advertiser/:id', (req, res) => {
   
   if (!advertiser) return res.status(404).send('Advertiser not found');
 
+  const campaigns = db.prepare('SELECT * FROM campaigns WHERE advertiser_id = ?').all(advertiserId);
+  const publishers = db.prepare('SELECT id, name FROM publishers').all();
+
   const ads = db.prepare(`
     SELECT ads.*,
     (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
@@ -232,7 +244,29 @@ app.get('/advertiser/:id', (req, res) => {
   `).all(advertiserId);
 
   const dailyStats = getDailyStats({ advertiserId });
-  res.render('advertiser', { advertiser, ads, dailyStats });
+  res.render('advertiser', { advertiser, campaigns, publishers, ads, dailyStats });
+});
+
+// キャンペーンの新規作成
+app.post('/campaigns', (req, res) => {
+  const { advertiser_id, name, target_device, target_publishers } = req.body;
+  const publisherIds = Array.isArray(target_publishers) ? target_publishers.join(',') : (target_publishers || 'all');
+
+  db.prepare('INSERT INTO campaigns (advertiser_id, name, target_device, target_publisher_ids) VALUES (?, ?, ?, ?)')
+    .run(advertiser_id, name, target_device, publisherIds);
+
+  res.redirect(`/advertiser/${advertiser_id}`);
+});
+
+// 広告の新規入稿 (広告主用)
+app.post('/ads', (req, res) => {
+  const { advertiser_id, campaign_id, title, description, image_url, target_url, max_bid } = req.body;
+  const bid = max_bid ? parseFloat(max_bid) : 10;
+
+  db.prepare('INSERT INTO ads (campaign_id, title, description, image_url, target_url, max_bid) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(campaign_id, title, description, image_url, target_url, bid);
+
+  res.redirect(`/advertiser/${advertiser_id}`);
 });
 
 // 媒体社画面 (Publisher)
@@ -250,26 +284,6 @@ app.get('/publisher/:id', (req, res) => {
 
   const dailyStats = getDailyStats({ publisherId });
   res.render('publisher', { publisher, stats, port: PORT, dailyStats });
-});
-
-// 広告の新規入稿 (広告主用)
-app.post('/ads', (req, res) => {
-  const { advertiser_id, title, description, image_url, target_url, max_bid } = req.body;
-  
-  // 指定された広告主の最初のキャンペーンに紐づける（デモ用）
-  let campaign = db.prepare('SELECT id FROM campaigns WHERE advertiser_id = ? LIMIT 1').get(advertiser_id) as any;
-  
-  if (!campaign) {
-    const result = db.prepare('INSERT INTO campaigns (advertiser_id, name) VALUES (?, ?)').run(advertiser_id, 'Default Campaign');
-    campaign = { id: result.lastInsertRowid };
-  }
-
-  const bid = max_bid ? parseFloat(max_bid) : 10;
-
-  db.prepare('INSERT INTO ads (campaign_id, title, description, image_url, target_url, max_bid) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(campaign.id, title, description, image_url, target_url, bid);
-
-  res.redirect(`/advertiser/${advertiser_id}`);
 });
 
 app.listen(PORT, () => {
