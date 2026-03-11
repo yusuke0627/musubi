@@ -84,14 +84,14 @@ export default async function AdminDashboard() {
               </div>
               
               <div className="bg-white/60 border border-orange-100 rounded-lg p-3 text-[11px] text-orange-800 leading-relaxed">
-                <p className="font-bold mb-1 flex items-center">
-                  <span className="mr-1">⚙️</span> Validation Logic:
+                <p className="font-bold mb-1 flex items-center text-xs">
+                  <span className="mr-1">⚙️</span> クリック検証ロジック:
                 </p>
                 <ul className="list-disc list-inside space-y-0.5 ml-1">
-                  <li><strong>Deduplication</strong>: Excludes repeat clicks from the same IP/Ad within 10s.</li>
-                  <li><strong>Integrity</strong>: Verifies the existence of active ad groups and campaigns.</li>
-                  <li><strong>Solvency</strong>: Ensures the advertiser has sufficient balance for the bid.</li>
-                  <li><strong>Settlement</strong>: Deducts funds from advertiser and credits the publisher.</li>
+                  <li><strong>重複排除</strong>: 同一IP・同一広告への10秒以内の連続クリックを無効化。</li>
+                  <li><strong>整合性チェック</strong>: 広告グループおよびキャンペーンの有効性を確認。</li>
+                  <li><strong>残高確認</strong>: 広告主のデポジット残高が入札額を満たしているかチェック。</li>
+                  <li><strong>即時決済</strong>: 広告主残高から減算し、媒体社の収益として確定・加算。</li>
                 </ul>
               </div>
             </div>
