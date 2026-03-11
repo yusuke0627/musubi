@@ -71,15 +71,29 @@ export default async function AdminDashboard() {
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Billing Management */}
-          <section className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[500px]">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-orange-50/30">
-              <h2 className="text-xl font-bold text-gray-800">Billing Management</h2>
-              <form action={processClicks}>
-                <button type="submit" className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors shadow-sm">
-                  Process Pending Clicks ({pendingClicks.length})
-                </button>
-              </form>
+          {/* Click Validation */}
+          <section className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[550px]">
+            <div className="p-6 border-b border-gray-100 bg-orange-50/30">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800 tracking-tight">Click Validation</h2>
+                <form action={processClicks}>
+                  <button type="submit" className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors shadow-sm whitespace-nowrap">
+                    Validate & Settle Clicks ({pendingClicks.length})
+                  </button>
+                </form>
+              </div>
+              
+              <div className="bg-white/60 border border-orange-100 rounded-lg p-3 text-[11px] text-orange-800 leading-relaxed">
+                <p className="font-bold mb-1 flex items-center">
+                  <span className="mr-1">⚙️</span> Validation Logic:
+                </p>
+                <ul className="list-disc list-inside space-y-0.5 ml-1">
+                  <li><strong>Deduplication</strong>: Excludes repeat clicks from the same IP/Ad within 10s.</li>
+                  <li><strong>Integrity</strong>: Verifies the existence of active ad groups and campaigns.</li>
+                  <li><strong>Solvency</strong>: Ensures the advertiser has sufficient balance for the bid.</li>
+                  <li><strong>Settlement</strong>: Deducts funds from advertiser and credits the publisher.</li>
+                </ul>
+              </div>
             </div>
             <div className="flex-1 overflow-auto p-0">
               <table className="min-w-full divide-y divide-gray-200">
