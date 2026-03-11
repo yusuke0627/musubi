@@ -250,7 +250,17 @@ app.get('/advertiser/:id', (req, res) => {
 // キャンペーンの新規作成
 app.post('/campaigns', (req, res) => {
   const { advertiser_id, name, target_device, target_publishers } = req.body;
-  const publisherIds = Array.isArray(target_publishers) ? target_publishers.join(',') : (target_publishers || 'all');
+
+  let publisherIds = 'all';
+  if (target_publishers) {
+    const selected = Array.isArray(target_publishers) ? target_publishers : [target_publishers];
+    // 'all' が含まれているか、何も選択されていない（実際にはHTMLの仕様上ここには来ないが）場合は 'all'
+    if (selected.includes('all') || selected.length === 0) {
+      publisherIds = 'all';
+    } else {
+      publisherIds = selected.join(',');
+    }
+  }
 
   db.prepare('INSERT INTO campaigns (advertiser_id, name, target_device, target_publisher_ids) VALUES (?, ?, ?, ?)')
     .run(advertiser_id, name, target_device, publisherIds);
