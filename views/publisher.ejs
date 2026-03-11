@@ -11,9 +11,11 @@
         .stats { display: flex; gap: 20px; }
         .stat-card { background: #fff; padding: 20px; border-radius: 8px; flex: 1; text-align: center; }
         .value { font-size: 24px; font-weight: bold; color: #27ae60; }
+        .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; height: 250px; }
         .code-block { background: #333; color: white; padding: 15px; border-radius: 4px; display: block; font-family: monospace; margin-top: 10px; overflow-x: auto; }
         .inline-code { background: #eee; color: #c7254e; padding: 2px 4px; border-radius: 4px; font-family: monospace; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
@@ -35,6 +37,48 @@
                 </div>
             </div>
         </section>
+
+        <section class="chart-container">
+            <canvas id="performanceChart"></canvas>
+        </section>
+
+        <script>
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            const dailyData = <%- JSON.stringify(dailyStats) %>;
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dailyData.map(d => d.date),
+                    datasets: [
+                        {
+                            label: 'Impressions',
+                            data: dailyData.map(d => d.impressions),
+                            borderColor: '#2980b9',
+                            backgroundColor: 'rgba(41, 128, 185, 0.1)',
+                            fill: true,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Clicks',
+                            data: dailyData.map(d => d.clicks),
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            fill: true,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Imps' } },
+                        y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Clicks' } }
+                    }
+                }
+            });
+        </script>
 
         <section class="card">
             <h2>Ad Tag Integration</h2>
