@@ -145,6 +145,9 @@ function runBillingWorker() {
 
       if (result.changes > 0) {
         db.prepare('UPDATE clicks SET is_valid = 1, processed = 1 WHERE id = ?').run(click.id);
+        // パブリッシャーに報酬を加算 (100%レベシェア)
+        db.prepare('UPDATE publishers SET balance = balance + ?, total_earnings = total_earnings + ? WHERE id = ?')
+          .run(adInfo.max_bid, adInfo.max_bid, click.publisher_id);
       } else {
         db.prepare('UPDATE clicks SET is_valid = 0, processed = 1, invalid_reason = ? WHERE id = ?')
           .run('Insufficient advertiser balance', click.id);
@@ -242,7 +245,11 @@ app.get('/admin', (req, res) => {
   const pendingClicks = db.prepare('SELECT clicks.*, ads.title as ad_title FROM clicks JOIN ads ON clicks.ad_id = ads.id WHERE processed = 0 ORDER BY created_at DESC').all();
   const processedClicks = db.prepare('SELECT clicks.*, ads.title as ad_title FROM clicks JOIN ads ON clicks.ad_id = ads.id WHERE processed = 1 ORDER BY created_at DESC LIMIT 50').all();
 
-  res.render('admin', { stats, advertisers, publishers, adGroups, ads, dailyStats, pendingClicks, processedClicks });
+  // 支払いリクエストの取得
+  const pendingPayouts = db.prepare('SELECT payouts.*, publishers.name as publisher_name FROM payouts JOIN publishers ON payouts.publisher_id = publishers.id WHERE status = \'pending\' ORDER BY created_at ASC').all();
+  const processedPayouts = db.prepare('SELECT payouts.*, publishers.name as publisher_name FROM payouts JOIN publishers ON payouts.publisher_id = publishers.id WHERE status = \'paid\' ORDER BY paid_at DESC LIMIT 50').all();
+
+  res.render('admin', { stats, advertisers, publishers, adGroups, ads, dailyStats, pendingClicks, processedClicks, pendingPayouts, processedPayouts });
 });
 
 // 手動クリック処理（バッチ実行）
@@ -316,6 +323,34 @@ app.post('/ads', (req, res) => {
     .run(ad_group_id, title, description, image_url, target_url);
   res.redirect(`/advertiser/${advertiser_id}`);
 });
+
+// 支払いリクエスト (Publisher -> Admin)
+app.post('/payouts/request', (req, res) => {
+  const { publisher_id } = req.body;
+  const publisher = db.prepare('SELECT balance FROM publishers WHERE id = ?').get(publisher_id) as any;
+
+  if (publisher && publisher.balance >= 1000) { // 最低支払い額 1000円
+    db.transaction(() => {
+      const amount = publisher.balance;
+      db.prepare('INSERT INTO payouts (publisher_id, amount, status) VALUES (?, ?, ?)')
+        .run(publisher_id, amount, 'pending');
+      db.prepare('UPDATE publishers SET balance = balance - ? WHERE id = ?')
+        .run(amount, publisher_id);
+    })();
+    res.redirect(`/publisher/${publisher_id}?payout=requested`);
+  } else {
+    res.redirect(`/publisher/${publisher_id}?error=insufficient_balance`);
+  }
+});
+
+// 支払い完了処理 (Admin)
+app.post('/admin/payouts/complete', (req, res) => {
+  const { payout_id } = req.body;
+  db.prepare('UPDATE payouts SET status = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?')
+    .run('paid', payout_id);
+  res.redirect('/admin#payouts');
+});
+
 // 媒体社画面 (Publisher)
 app.get('/publisher/:id', (req, res) => {
   const publisherId = req.params.id;
@@ -329,8 +364,10 @@ app.get('/publisher/:id', (req, res) => {
       (SELECT COUNT(*) FROM clicks WHERE publisher_id = ? AND is_valid = 1) as clicks
   `).get(publisherId, publisherId) as any;
 
+  const payouts = db.prepare('SELECT * FROM payouts WHERE publisher_id = ? ORDER BY created_at DESC').all(publisherId);
   const dailyStats = getDailyStats({ publisherId });
-  res.render('publisher', { publisher, stats, port: PORT, dailyStats });
+  
+  res.render('publisher', { publisher, stats, port: PORT, dailyStats, payouts });
 });
 
 app.listen(PORT, () => {

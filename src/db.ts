@@ -14,7 +14,19 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS publishers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    domain TEXT NOT NULL
+    domain TEXT NOT NULL,
+    balance REAL DEFAULT 0,
+    total_earnings REAL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS payouts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    publisher_id INTEGER,
+    amount REAL NOT NULL,
+    status TEXT DEFAULT 'pending', -- 'pending', 'paid'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    paid_at DATETIME,
+    FOREIGN KEY(publisher_id) REFERENCES publishers(id)
   );
 
   CREATE TABLE IF NOT EXISTS campaigns (
