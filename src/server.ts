@@ -44,7 +44,7 @@ app.get('/serve', (req, res) => {
     )
     SELECT ads.*, ad_groups.max_bid,
       CASE 
-        WHEN s.imps < 10 THEN ad_groups.max_bid * 0.01 -- デフォルトCTR 1%
+        WHEN s.imps < 5 THEN ad_groups.max_bid * 0.01 -- デフォルトCTR 1%
         ELSE ad_groups.max_bid * (CAST(s.valid_clicks AS REAL) / s.imps)
       END as score
     FROM ads
@@ -222,7 +222,7 @@ app.get('/admin', (req, res) => {
     (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
     (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as clicks,
     CASE 
-      WHEN (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) < 10 THEN ad_groups.max_bid * 0.01
+      WHEN (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) < 5 THEN ad_groups.max_bid * 0.01
       ELSE ad_groups.max_bid * (CAST((SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) AS REAL) / (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id))
     END as score
     FROM ads
