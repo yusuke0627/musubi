@@ -17,6 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 // 広告リクエストを受信
 app.get('/serve', (req, res) => {
   const publisherId = req.query.publisher_id;
+  const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   
   // RTB簡易版：広告主の残高が入札額以上のものから、最も入札額（max_bid）が高い広告を1件取得する
   const ad = db.prepare(`
@@ -32,8 +33,8 @@ app.get('/serve', (req, res) => {
   }
 
   // インプレッションを記録
-  db.prepare('INSERT INTO impressions (ad_id, publisher_id, user_agent) VALUES (?, ?, ?)')
-    .run(ad.id, publisherId, req.headers['user-agent']);
+  db.prepare('INSERT INTO impressions (ad_id, publisher_id, user_agent, ip_address) VALUES (?, ?, ?, ?)')
+    .run(ad.id, publisherId, req.headers['user-agent'], ip);
 
   // シンプルなHTML断片を返す
   const clickUrl = `http://localhost:${PORT}/click?ad_id=${ad.id}&publisher_id=${publisherId}`;
@@ -56,53 +57,93 @@ app.get('/serve', (req, res) => {
 
 app.get('/click', (req, res) => {
   const { ad_id, publisher_id } = req.query;
+  const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
 
-  // トランザクションでクリック記録と残高減算を行う
-  const performClick = db.transaction((adId, pubId, ua) => {
-    // 1. 広告情報を取得（入札額と広告主ID）
-    const ad = db.prepare(`
-      SELECT ads.max_bid, campaigns.advertiser_id, ads.target_url 
-      FROM ads 
-      JOIN campaigns ON ads.campaign_id = campaigns.id 
-      WHERE ads.id = ?
-    `).get(adId) as any;
-
-    if (!ad) {
-      console.log(`Ad not found: ID=${adId}`);
-      return null;
-    }
-
-    // 2. 広告主の残高を減らす
-    const result = db.prepare('UPDATE advertisers SET balance = balance - ? WHERE id = ? AND balance >= ?')
-      .run(ad.max_bid, ad.advertiser_id, ad.max_bid);
-
-    console.log(`Click for Ad ${adId}: Balance update result changes=${result.changes}`);
-
-    if (result.changes === 0) {
-      // 予算不足等の理由で更新できなかった場合
-      console.warn(`Insufficient balance or update failed for Advertiser ${ad.advertiser_id}`);
-      return ad.target_url;
-    }
-
-    // 3. クリックを記録
-    db.prepare('INSERT INTO clicks (ad_id, publisher_id, user_agent) VALUES (?, ?, ?)')
-      .run(adId, pubId, ua);
-
-    return ad.target_url;
-  });
-
+  // 高速リダイレクト：DBへのログ挿入のみを行い、予算減算は後回しにする
   try {
-    const targetUrl = performClick(ad_id, publisher_id, req.headers['user-agent']);
-    if (targetUrl) {
-      res.redirect(targetUrl);
+    const ad = db.prepare('SELECT target_url FROM ads WHERE id = ?').get(ad_id) as any;
+    if (ad) {
+      db.prepare('INSERT INTO clicks (ad_id, publisher_id, user_agent, ip_address, processed) VALUES (?, ?, ?, ?, 0)')
+        .run(ad_id, publisher_id, userAgent, ip);
+      res.redirect(ad.target_url);
     } else {
       res.status(404).send('Ad not found');
     }
   } catch (err) {
-    console.error('Click tracking error:', err);
+    console.error('Click error:', err);
     res.status(500).send('Internal Server Error');
   }
 });
+
+// ---------------------------------------------------------
+// 2.5 Billing Worker (非同期予算消費バッチ)
+// ---------------------------------------------------------
+
+function runBillingWorker() {
+  const processBatch = db.transaction(() => {
+    // 1. 未処理のクリックをまとめて取得
+    const unprocessedClicks = db.prepare('SELECT * FROM clicks WHERE processed = 0 ORDER BY created_at ASC').all() as any[];
+    if (unprocessedClicks.length === 0) return 0;
+
+    console.log(`[BillingWorker] Processing ${unprocessedClicks.length} clicks...`);
+
+    for (const click of unprocessedClicks) {
+      // 2. 不正クリック検知（同一IP・短時間重複）
+      // 直前10秒以内に、既に「有効(is_valid=1)」と判定された同じIP・広告のクリックがあるか確認
+      const duplicate = db.prepare(`
+        SELECT id FROM clicks 
+        WHERE ad_id = ? AND ip_address = ? AND is_valid = 1 AND id < ?
+        AND created_at >= datetime(?, '-10 seconds')
+        LIMIT 1
+      `).get(click.ad_id, click.ip_address, click.id, click.created_at);
+
+      if (duplicate) {
+        // 重複判定：無効化してスキップ
+        db.prepare('UPDATE clicks SET is_valid = 0, processed = 1 WHERE id = ?').run(click.id);
+        continue;
+      }
+
+      // 3. 広告情報の取得（入札額と広告主ID）
+      const adInfo = db.prepare(`
+        SELECT ads.max_bid, campaigns.advertiser_id 
+        FROM ads 
+        JOIN campaigns ON ads.campaign_id = campaigns.id 
+        WHERE ads.id = ?
+      `).get(click.ad_id) as any;
+
+      if (!adInfo) {
+        db.prepare('UPDATE clicks SET is_valid = 0, processed = 1 WHERE id = ?').run(click.id);
+        continue;
+      }
+
+      // 4. 予算減算
+      const result = db.prepare('UPDATE advertisers SET balance = balance - ? WHERE id = ? AND balance >= ?')
+        .run(adInfo.max_bid, adInfo.advertiser_id, adInfo.max_bid);
+
+      if (result.changes > 0) {
+        // 成功
+        db.prepare('UPDATE clicks SET is_valid = 1, processed = 1 WHERE id = ?').run(click.id);
+      } else {
+        // 予算不足などの場合は無効化（実際にはリトライなどの検討が必要）
+        db.prepare('UPDATE clicks SET is_valid = 0, processed = 1 WHERE id = ?').run(click.id);
+      }
+    }
+    return unprocessedClicks.length;
+  });
+
+  try {
+    const processedCount = processBatch();
+    if (processedCount > 0) {
+      console.log(`[BillingWorker] Successfully processed ${processedCount} clicks.`);
+    }
+  } catch (err) {
+    console.error('[BillingWorker] Error:', err);
+  }
+}
+
+// 5秒おきにバッチを回す
+setInterval(runBillingWorker, 5000);
 
 // ---------------------------------------------------------
 // 3. ダッシュボード (Admin/Advertiser/Publisher)
@@ -134,7 +175,7 @@ function getDailyStats(filter: { advertiserId?: string, publisherId?: string } =
     SELECT 
       d.date,
       (SELECT COUNT(*) FROM impressions ${whereImp} AND date(created_at) = d.date) as impressions,
-      (SELECT COUNT(*) FROM clicks ${whereClick} AND date(created_at) = d.date) as clicks
+      (SELECT COUNT(*) FROM clicks ${whereClick} AND date(created_at) = d.date AND is_valid = 1) as clicks
     FROM dates d
   `;
 
@@ -155,7 +196,7 @@ app.get('/admin', (req, res) => {
   const stats = db.prepare(`
     SELECT 
       (SELECT COUNT(*) FROM impressions) as total_impressions,
-      (SELECT COUNT(*) FROM clicks) as total_clicks
+      (SELECT COUNT(*) FROM clicks WHERE is_valid = 1) as total_clicks
   `).get() as any;
 
   const advertisers = db.prepare('SELECT * FROM advertisers').all();
@@ -163,7 +204,7 @@ app.get('/admin', (req, res) => {
   const ads = db.prepare(`
     SELECT ads.*, advertisers.name as advertiser_name,
     (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
-    (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id) as clicks
+    (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as clicks
     FROM ads
     JOIN campaigns ON ads.campaign_id = campaigns.id
     JOIN advertisers ON campaigns.advertiser_id = advertisers.id
@@ -183,7 +224,7 @@ app.get('/advertiser/:id', (req, res) => {
   const ads = db.prepare(`
     SELECT ads.*,
     (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
-    (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id) as clicks
+    (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as clicks
     FROM ads
     JOIN campaigns ON ads.campaign_id = campaigns.id
     WHERE campaigns.advertiser_id = ?
@@ -204,7 +245,7 @@ app.get('/publisher/:id', (req, res) => {
   const stats = db.prepare(`
     SELECT 
       (SELECT COUNT(*) FROM impressions WHERE publisher_id = ?) as impressions,
-      (SELECT COUNT(*) FROM clicks WHERE publisher_id = ?) as clicks
+      (SELECT COUNT(*) FROM clicks WHERE publisher_id = ? AND is_valid = 1) as clicks
   `).get(publisherId, publisherId) as any;
 
   const dailyStats = getDailyStats({ publisherId });
