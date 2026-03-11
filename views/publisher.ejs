@@ -76,7 +76,7 @@
                         <p style="color: #666; font-size: 14px; margin: 5px 0 0 0;">You need ¥<%= (1000 - publisher.balance).toLocaleString() %> more to request a payout.</p>
                     <% } %>
                 </div>
-                <form action="/payouts/request" method="POST">
+                <form action="/publisher/payouts/request" method="POST">
                     <input type="hidden" name="publisher_id" value="<%= publisher.id %>">
                     <button type="submit" <%= publisher.balance < 1000 ? 'disabled' : '' %> 
                         style="background: <%= publisher.balance < 1000 ? '#ccc' : '#27ae60' %>; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: <%= publisher.balance < 1000 ? 'not-allowed' : 'pointer' %>;">

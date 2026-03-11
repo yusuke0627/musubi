@@ -92,7 +92,7 @@
 
         <section class="card">
             <h2>Step 1: Create New Campaign</h2>
-            <form action="/campaigns" method="POST">
+            <form action="/advertiser/campaigns/new" method="POST">
                 <input type="hidden" name="advertiser_id" value="<%= advertiser.id %>">
                 <div class="form-group">
                     <label>Campaign Name:</label>
@@ -108,7 +108,7 @@
 
         <section class="card">
             <h2>Step 2: Create New Ad Group (Targeting & Bid)</h2>
-            <form action="/ad_groups" method="POST">
+            <form action="/advertiser/ad_groups/new" method="POST">
                 <input type="hidden" name="advertiser_id" value="<%= advertiser.id %>">
                 <div class="form-group">
                     <label>Select Campaign:</label>
@@ -145,7 +145,7 @@
 
         <section class="card">
             <h2>Step 3: Create New Ad (Creative)</h2>
-            <form action="/ads" method="POST">
+            <form action="/advertiser/ads/new" method="POST">
                 <input type="hidden" name="advertiser_id" value="<%= advertiser.id %>">
                 <div class="form-group">
                     <label>Select Ad Group:</label>
