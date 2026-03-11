@@ -24,18 +24,34 @@ app.get('/serve', (req, res) => {
   const isMobile = /Mobi|Android/i.test(ua);
   const currentDevice = isMobile ? 'mobile' : 'desktop';
 
-  // RTB簡易版：AdGroups の条件に合致し、かつ広告主の残高が入札額以上のものから1件取得
+  // RTB版：期待収益（eCPM）に基づき、最も収益性が高い広告を1件取得する
+  // eCPM = 入札単価 × CTR (クリック数 / インプレッション数)
+  // コールドスタート対策：インプレッションが少ない広告はデフォルトCTR(1%)で計算する
   const ad = db.prepare(`
-    SELECT ads.*, ad_groups.max_bid FROM ads 
+    WITH ad_stats AS (
+      SELECT 
+        ads.id,
+        ad_groups.max_bid,
+        (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as imps,
+        (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as valid_clicks
+      FROM ads
+      JOIN ad_groups ON ads.ad_group_id = ad_groups.id
+      JOIN campaigns ON ad_groups.campaign_id = campaigns.id
+      JOIN advertisers ON campaigns.advertiser_id = advertisers.id
+      WHERE advertisers.balance >= ad_groups.max_bid
+        AND (ad_groups.target_device = 'all' OR ad_groups.target_device = ?)
+        AND (ad_groups.target_publisher_ids = 'all' OR ',' || ad_groups.target_publisher_ids || ',' LIKE ?)
+    )
+    SELECT ads.*, ad_groups.max_bid,
+      CASE 
+        WHEN s.imps < 10 THEN ad_groups.max_bid * 0.01 -- デフォルトCTR 1%
+        ELSE ad_groups.max_bid * (CAST(s.valid_clicks AS REAL) / s.imps)
+      END as score
+    FROM ads
     JOIN ad_groups ON ads.ad_group_id = ad_groups.id
-    JOIN campaigns ON ad_groups.campaign_id = campaigns.id
-    JOIN advertisers ON campaigns.advertiser_id = advertisers.id
-    WHERE advertisers.balance >= ad_groups.max_bid
-      -- デバイスターゲティング
-      AND (ad_groups.target_device = 'all' OR ad_groups.target_device = ?)
-      -- 媒体ターゲティング (カンマ区切りIDリストに含まれるか判定)
-      AND (ad_groups.target_publisher_ids = 'all' OR ',' || ad_groups.target_publisher_ids || ',' LIKE ?)
-    ORDER BY ad_groups.max_bid DESC LIMIT 1
+    JOIN ad_stats s ON ads.id = s.id
+    ORDER BY score DESC, ads.id DESC
+    LIMIT 1
   `).get(currentDevice, `%,${publisherId},%`) as any;
 
   if (!ad) {
@@ -204,11 +220,16 @@ app.get('/admin', (req, res) => {
   const ads = db.prepare(`
     SELECT ads.*, advertisers.name as advertiser_name, ad_groups.name as ad_group_name, ad_groups.max_bid as current_bid,
     (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
-    (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as clicks
+    (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as clicks,
+    CASE 
+      WHEN (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) < 10 THEN ad_groups.max_bid * 0.01
+      ELSE ad_groups.max_bid * (CAST((SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) AS REAL) / (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id))
+    END as score
     FROM ads
     JOIN ad_groups ON ads.ad_group_id = ad_groups.id
     JOIN campaigns ON ad_groups.campaign_id = campaigns.id
     JOIN advertisers ON campaigns.advertiser_id = advertisers.id
+    ORDER BY score DESC
   `).all();
 
   const dailyStats = getDailyStats();
