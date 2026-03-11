@@ -178,14 +178,25 @@
         <section class="card">
             <h2>My Ads</h2>
             <table>
-                <thead><tr><th>ID</th><th>Preview</th><th>Title / Description</th><th>Ad Group</th><th>Imps</th><th>Clicks</th><th title="Click-Through Rate (Clicks / Impressions)">CTR</th></tr></thead>
+                <thead><tr><th>ID</th><th>Preview</th><th>Title / Description</th><th>Status</th><th>Imps</th><th>Clicks</th><th title="Click-Through Rate (Clicks / Impressions)">CTR</th></tr></thead>
                 <tbody>
                     <% ads.forEach(ad => { %>
                         <tr>
                             <td><%= ad.id %></td>
                             <td><img src="<%= ad.image_url %>" class="preview-img"></td>
-                            <td><strong><%= ad.title %></strong><br><small><%= ad.description %></small></td>
-                            <td><%= ad.ad_group_name %></td>
+                            <td>
+                                <strong><%= ad.title %></strong><br><small><%= ad.description %></small>
+                                <% if (ad.status === 'rejected') { %>
+                                    <div style="color: #e74c3c; font-size: 11px; margin-top: 5px; border-top: 1px dashed #e74c3c; padding-top: 2px;">
+                                        Reason: <%= ad.rejection_reason %>
+                                    </div>
+                                <% } %>
+                            </td>
+                            <td>
+                                <span style="background: <%= ad.status === 'approved' ? '#27ae60' : (ad.status === 'rejected' ? '#e74c3c' : '#f1c40f') %>; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">
+                                    <%= ad.status.toUpperCase() %>
+                                </span>
+                            </td>
                             <td><%= ad.impressions %></td>
                             <td><%= ad.clicks %></td>
                             <td><%= ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : 0 %>%</td>
