@@ -64,6 +64,7 @@ db.exec(`
     ip_address TEXT,
     is_valid INTEGER DEFAULT 1,
     processed INTEGER DEFAULT 0,
+    invalid_reason TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(ad_id) REFERENCES ads(id),
     FOREIGN KEY(publisher_id) REFERENCES publishers(id)

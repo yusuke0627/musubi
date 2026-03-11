@@ -120,7 +120,8 @@ function runBillingWorker() {
       `).get(click.ad_id, click.ip_address, click.id, click.created_at);
 
       if (duplicate) {
-        db.prepare('UPDATE clicks SET is_valid = 0, processed = 1 WHERE id = ?').run(click.id);
+        db.prepare('UPDATE clicks SET is_valid = 0, processed = 1, invalid_reason = ? WHERE id = ?')
+          .run('Duplicate click (10s)', click.id);
         continue;
       }
 
@@ -134,7 +135,8 @@ function runBillingWorker() {
       `).get(click.ad_id) as any;
 
       if (!adInfo) {
-        db.prepare('UPDATE clicks SET is_valid = 0, processed = 1 WHERE id = ?').run(click.id);
+        db.prepare('UPDATE clicks SET is_valid = 0, processed = 1, invalid_reason = ? WHERE id = ?')
+          .run('Ad info not found', click.id);
         continue;
       }
 
@@ -144,21 +146,23 @@ function runBillingWorker() {
       if (result.changes > 0) {
         db.prepare('UPDATE clicks SET is_valid = 1, processed = 1 WHERE id = ?').run(click.id);
       } else {
-        db.prepare('UPDATE clicks SET is_valid = 0, processed = 1 WHERE id = ?').run(click.id);
+        db.prepare('UPDATE clicks SET is_valid = 0, processed = 1, invalid_reason = ? WHERE id = ?')
+          .run('Insufficient advertiser balance', click.id);
       }
     }
     return unprocessedClicks.length;
   });
   
   try {
-    processBatch();
+    return processBatch();
   } catch (err) {
     console.error('[BillingWorker] Error:', err);
+    throw err;
   }
 }
 
-// 5秒おきにバッチを回す
-setInterval(runBillingWorker, 5000);
+// 自動処理を停止（UIから手動実行に変更）
+// setInterval(runBillingWorker, 5000);
 
 // ---------------------------------------------------------
 // 3. ダッシュボード (Admin/Advertiser/Publisher)
@@ -233,7 +237,22 @@ app.get('/admin', (req, res) => {
   `).all();
 
   const dailyStats = getDailyStats();
-  res.render('admin', { stats, advertisers, publishers, adGroups, ads, dailyStats });
+
+  // クリック履歴の取得
+  const pendingClicks = db.prepare('SELECT clicks.*, ads.title as ad_title FROM clicks JOIN ads ON clicks.ad_id = ads.id WHERE processed = 0 ORDER BY created_at DESC').all();
+  const processedClicks = db.prepare('SELECT clicks.*, ads.title as ad_title FROM clicks JOIN ads ON clicks.ad_id = ads.id WHERE processed = 1 ORDER BY created_at DESC LIMIT 50').all();
+
+  res.render('admin', { stats, advertisers, publishers, adGroups, ads, dailyStats, pendingClicks, processedClicks });
+});
+
+// 手動クリック処理（バッチ実行）
+app.post('/admin/process-clicks', (req, res) => {
+  try {
+    const processedCount = runBillingWorker();
+    res.redirect('/admin?processed=' + processedCount);
+  } catch (err) {
+    res.status(500).send('Error processing clicks');
+  }
 });
 
 // 広告主画面 (Advertiser)
