@@ -181,7 +181,7 @@ export default async function AdminDashboard() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {pendingPayouts.map((p) => (
                   <tr key={p.id}>
-                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{new Date(p.created_at).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{new Date(p.created_at).toLocaleDateString('ja-JP')}</td>
                     <td className="px-6 py-4 text-sm font-bold text-gray-900">{p.publisher_name}</td>
                     <td className="px-6 py-4 text-sm font-mono font-bold text-right text-emerald-600 whitespace-nowrap">¥{p.amount.toLocaleString()}</td>
                     <td className="px-6 py-4 text-center">

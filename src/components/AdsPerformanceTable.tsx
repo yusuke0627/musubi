@@ -154,8 +154,8 @@ export default function AdsPerformanceTable({ ads, adGroups, advertiserId }: Ads
                 {visibleColumns.has("campaign") && <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{ad.campaign_name}</td>}
                 {visibleColumns.has("duration") && (
                   <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
-                    <div className="font-bold">{new Date(ad.start_date).toLocaleDateString()}</div>
-                    <div className="text-[10px]">to {ad.end_date ? new Date(ad.end_date).toLocaleDateString() : 'Endless'}</div>
+                    <div className="font-bold">{new Date(ad.start_date).toLocaleDateString('ja-JP')}</div>
+                    <div className="text-[10px]">to {ad.end_date ? new Date(ad.end_date).toLocaleDateString('ja-JP') : 'Endless'}</div>
                   </td>
                 )}
                 {visibleColumns.has("adGroup") && <td className="px-6 py-4 text-gray-600 whitespace-nowrap italic">{ad.group_name}</td>}
