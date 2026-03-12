@@ -36,7 +36,7 @@ const COLUMN_LABELS: Record<string, string> = {
   bid: "Max Bid",
   device: "Device",
   targetUrl: "Target URL",
-  stats: "Stats (Imps/Clicks/CTR)",
+  stats: "Stats",
 };
 
 export default function AdsPerformanceTable({ ads, advertiserId }: AdsPerformanceTableProps) {
@@ -108,17 +108,17 @@ export default function AdsPerformanceTable({ ads, advertiserId }: AdsPerformanc
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full border-collapse">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest sticky left-0 bg-gray-50 z-10 border-r border-gray-100">Ad Info</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest sticky left-0 bg-gray-50 z-10 border-r border-gray-100 min-w-[200px]">Ad Info</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
-              {visibleColumns.has("campaign") && <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Campaign</th>}
-              {visibleColumns.has("duration") && <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Duration</th>}
-              {visibleColumns.has("adGroup") && <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Ad Group</th>}
+              {visibleColumns.has("campaign") && <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest min-w-[150px]">Campaign</th>}
+              {visibleColumns.has("duration") && <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest min-w-[150px]">Duration</th>}
+              {visibleColumns.has("adGroup") && <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest min-w-[150px]">Ad Group</th>}
               {visibleColumns.has("bid") && <th className="px-6 py-3 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">Max Bid</th>}
               {visibleColumns.has("device") && <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-widest">Device</th>}
-              {visibleColumns.has("targetUrl") && <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Target URL</th>}
+              {visibleColumns.has("targetUrl") && <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest min-w-[150px]">Target URL</th>}
               {visibleColumns.has("stats") && (
                 <>
                   <th className="px-6 py-3 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">Imps</th>
@@ -133,7 +133,7 @@ export default function AdsPerformanceTable({ ads, advertiserId }: AdsPerformanc
             {ads.map((ad) => (
               <tr key={ad.id} className="hover:bg-gray-50 transition-colors text-sm">
                 <td className="px-6 py-4 sticky left-0 bg-white z-10 border-r border-gray-100 group">
-                  <div className="flex items-center min-w-[200px] justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center">
                       <img src={ad.image_url} className="w-12 h-10 object-cover rounded border border-gray-100 mr-3 shadow-sm" alt="" />
                       <div>
@@ -160,11 +160,13 @@ export default function AdsPerformanceTable({ ads, advertiserId }: AdsPerformanc
                   )}
                 </td>
                 {visibleColumns.has("campaign") && (
-                  <td className="px-6 py-4 font-medium text-gray-700 whitespace-nowrap flex items-center justify-between gap-2 group min-w-[150px]">
-                    <span>{ad.campaign_name}</span>
-                    <button onClick={() => openEdit('campaign', { id: ad.campaign_id, name: ad.campaign_name, start_date: ad.start_date, end_date: ad.end_date, budget: ad.campaign_budget })} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-600">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                    </button>
+                  <td className="px-6 py-4 font-medium text-gray-700 whitespace-nowrap group">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate max-w-[120px]" title={ad.campaign_name}>{ad.campaign_name}</span>
+                      <button onClick={() => openEdit('campaign', { id: ad.campaign_id, name: ad.campaign_name, start_date: ad.start_date, end_date: ad.end_date, budget: ad.campaign_budget })} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-600">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                      </button>
+                    </div>
                   </td>
                 )}
                 {visibleColumns.has("duration") && (
@@ -174,11 +176,13 @@ export default function AdsPerformanceTable({ ads, advertiserId }: AdsPerformanc
                   </td>
                 )}
                 {visibleColumns.has("adGroup") && (
-                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap flex items-center justify-between gap-2 group min-w-[150px]">
-                    <span>{ad.group_name}</span>
-                    <button onClick={() => openEdit('adGroup', { id: ad.ad_group_id, name: ad.group_name, max_bid: ad.max_bid, target_device: ad.target_device })} className="opacity-0 group-hover:opacity-100 transition-opacity text-emerald-400 hover:text-emerald-600">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                    </button>
+                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap group">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate max-w-[120px]" title={ad.group_name}>{ad.group_name}</span>
+                      <button onClick={() => openEdit('adGroup', { id: ad.ad_group_id, name: ad.group_name, max_bid: ad.max_bid, target_device: ad.target_device })} className="opacity-0 group-hover:opacity-100 transition-opacity text-emerald-400 hover:text-emerald-600">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                      </button>
+                    </div>
                   </td>
                 )}
                 {visibleColumns.has("bid") && (
