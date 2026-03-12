@@ -32,7 +32,7 @@ export default async function PublisherDashboard({ params }: PageProps) {
           <Link href="/" className="text-blue-600 hover:underline">← Back to Portal</Link>
         </header>
 
-        <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Impressions</h3>
             <div className="text-2xl font-bold text-gray-900">{stats.impressions}</div>
@@ -44,10 +44,6 @@ export default async function PublisherDashboard({ params }: PageProps) {
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Current Balance</h3>
             <div className="text-2xl font-bold text-emerald-600">¥{publisher.balance.toLocaleString()}</div>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
-            <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Revenue Share</h3>
-            <div className="text-2xl font-bold text-gray-900">{(publisher.rev_share * 100).toFixed(0)}%</div>
           </div>
         </section>
 
