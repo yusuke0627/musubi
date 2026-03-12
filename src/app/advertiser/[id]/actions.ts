@@ -26,17 +26,21 @@ export async function createAdGroup(formData: FormData) {
   const target_device = formData.get("target_device") as string;
   const target_publishers = formData.getAll("target_publishers") as string[];
 
-  let publisherIds = 'all';
-  if (target_publishers && target_publishers.length > 0) {
-    if (target_publishers.includes('all')) {
-      publisherIds = 'all';
-    } else {
-      publisherIds = target_publishers.join(',');
-    }
-  }
+  const isAll = target_publishers.includes('all') || target_publishers.length === 0;
 
-  db.prepare('INSERT INTO ad_groups (campaign_id, name, max_bid, target_device, target_publisher_ids) VALUES (?, ?, ?, ?, ?)')
-    .run(campaign_id, name, max_bid, target_device, publisherIds);
+  db.transaction(() => {
+    const result = db.prepare('INSERT INTO ad_groups (campaign_id, name, max_bid, target_device, is_all_publishers) VALUES (?, ?, ?, ?, ?)')
+      .run(campaign_id, name, max_bid, target_device, isAll ? 1 : 0);
+    
+    const adGroupId = result.lastInsertRowid;
+
+    if (!isAll) {
+      const insertTarget = db.prepare('INSERT INTO ad_group_target_publishers (ad_group_id, publisher_id) VALUES (?, ?)');
+      target_publishers.forEach(pubId => {
+        insertTarget.run(adGroupId, pubId);
+      });
+    }
+  })();
 
   revalidatePath(`/advertiser/${advertiser_id}`);
 }
@@ -79,9 +83,24 @@ export async function updateAdGroup(formData: FormData) {
   const name = formData.get("name") as string;
   const max_bid = formData.get("max_bid") as string;
   const target_device = formData.get("target_device") as string;
+  const target_publishers = formData.getAll("target_publishers") as string[];
 
-  db.prepare('UPDATE ad_groups SET campaign_id = ?, name = ?, max_bid = ?, target_device = ? WHERE id = ?')
-    .run(campaign_id, name, max_bid, target_device, id);
+  const isAll = target_publishers.includes('all') || target_publishers.length === 0;
+
+  db.transaction(() => {
+    db.prepare('UPDATE ad_groups SET campaign_id = ?, name = ?, max_bid = ?, target_device = ?, is_all_publishers = ? WHERE id = ?')
+      .run(campaign_id, name, max_bid, target_device, isAll ? 1 : 0, id);
+
+    // 既存のターゲット設定を削除して再登録
+    db.prepare('DELETE FROM ad_group_target_publishers WHERE ad_group_id = ?').run(id);
+    
+    if (!isAll) {
+      const insertTarget = db.prepare('INSERT INTO ad_group_target_publishers (ad_group_id, publisher_id) VALUES (?, ?)');
+      target_publishers.forEach(pubId => {
+        insertTarget.run(id, pubId);
+      });
+    }
+  })();
 
   revalidatePath(`/advertiser/${advertiser_id}`);
 }

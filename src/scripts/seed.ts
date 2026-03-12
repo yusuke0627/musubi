@@ -50,13 +50,13 @@ function seed() {
 
   // 4. Ad Groups
   const adGroups = [
-    { id: 1, campaign_id: 1, name: 'Tech Enthusiasts (Mobile)', max_bid: 120, device: 'mobile' },
-    { id: 2, campaign_id: 2, name: 'Luxury Travelers (Desktop)', max_bid: 250, device: 'desktop' },
-    { id: 3, campaign_id: 3, name: 'Healthy Eaters (All)', max_bid: 85, device: 'all' },
+    { id: 1, campaign_id: 1, name: 'Tech Enthusiasts (Mobile)', max_bid: 120, device: 'mobile', is_all: 1 },
+    { id: 2, campaign_id: 2, name: 'Luxury Travelers (Desktop)', max_bid: 250, device: 'desktop', is_all: 1 },
+    { id: 3, campaign_id: 3, name: 'Healthy Eaters (All)', max_bid: 85, device: 'all', is_all: 1 },
   ];
 
-  const insertGroup = db.prepare('INSERT INTO ad_groups (id, campaign_id, name, max_bid, target_device, target_publisher_ids) VALUES (?, ?, ?, ?, ?, ?)');
-  adGroups.forEach(g => insertGroup.run(g.id, g.campaign_id, g.name, g.max_bid, g.device, 'all'));
+  const insertGroup = db.prepare('INSERT INTO ad_groups (id, campaign_id, name, max_bid, target_device, is_all_publishers) VALUES (?, ?, ?, ?, ?, ?)');
+  adGroups.forEach(g => insertGroup.run(g.id, g.campaign_id, g.name, g.max_bid, g.device, g.is_all));
 
   // 5. Ads (using images from public/images/)
   const ads = [

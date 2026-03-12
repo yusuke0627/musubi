@@ -67,8 +67,16 @@ export function initSchema(database: Database.Database = db) {
       name TEXT NOT NULL,
       max_bid REAL DEFAULT 10,
       target_device TEXT DEFAULT 'all',
-      target_publisher_ids TEXT DEFAULT 'all',
+      is_all_publishers INTEGER DEFAULT 1, -- 1: All, 0: Specific
       FOREIGN KEY(campaign_id) REFERENCES campaigns(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS ad_group_target_publishers (
+      ad_group_id INTEGER,
+      publisher_id INTEGER,
+      PRIMARY KEY (ad_group_id, publisher_id),
+      FOREIGN KEY(ad_group_id) REFERENCES ad_groups(id),
+      FOREIGN KEY(publisher_id) REFERENCES publishers(id)
     );
 
     CREATE TABLE IF NOT EXISTS ads (
