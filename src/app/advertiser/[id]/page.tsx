@@ -3,6 +3,7 @@ import { getDailyStats } from "@/services/stats";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import StatsChart from "@/components/StatsChart";
+import AdsPerformanceTable from "@/components/AdsPerformanceTable";
 import { createCampaign, createAdGroup, createAd } from "./actions";
 
 interface PageProps {
@@ -20,9 +21,11 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
   const publishers = db.prepare('SELECT id, name FROM publishers').all() as any[];
 
   const ads = db.prepare(`
-    SELECT ads.*, ad_groups.name as ad_group_name,
-    (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
-    (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as clicks
+    SELECT ads.*, 
+           ad_groups.name as group_name, ad_groups.max_bid, ad_groups.target_device,
+           campaigns.name as campaign_name, campaigns.start_date, campaigns.end_date,
+           (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
+           (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as clicks
     FROM ads
     JOIN ad_groups ON ads.ad_group_id = ad_groups.id
     JOIN campaigns ON ad_groups.campaign_id = campaigns.id
@@ -179,60 +182,7 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
           </section>
         </div>
 
-        <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-12">
-          <div className="p-6 border-b border-gray-100 bg-slate-50/50">
-            <h2 className="text-xl font-bold text-gray-800">My Ads Performance</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Ad Info</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Imps</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Clicks</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest text-center">CTR</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {ads.map((ad) => (
-                  <tr key={ad.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <img src={ad.image_url} className="w-12 h-10 object-cover rounded border border-gray-100 mr-3 shadow-sm" alt="" />
-                        <div>
-                          <div className="text-sm font-bold text-gray-900 leading-none mb-1">{ad.title}</div>
-                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{ad.ad_group_name}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded text-[10px] font-black tracking-tighter ${
-                        ad.status === 'approved' ? 'bg-green-100 text-green-800' : 
-                        ad.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {ad.status.toUpperCase()}
-                      </span>
-                      {ad.status === 'rejected' && (
-                        <div className="text-[10px] text-red-500 mt-1 max-w-[150px] truncate font-medium italic" title={ad.rejection_reason}>
-                          Reason: {ad.rejection_reason}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 text-center font-mono font-medium">{ad.impressions.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600 text-center font-mono font-medium">{ad.clicks.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-sm text-blue-600 text-center font-black">
-                      {ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : '0.00'}%
-                    </td>
-                  </tr>
-                ))}
-                {ads.length === 0 && (
-                  <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic font-medium">No ads found. Start by creating a campaign!</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <AdsPerformanceTable ads={ads} />
       </div>
     </div>
   );
