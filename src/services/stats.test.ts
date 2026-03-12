@@ -16,7 +16,7 @@ describe('getDailyStats', () => {
   });
 
   it('should return 7 days of statistics', () => {
-    const stats = getDailyStats();
+    const stats = getDailyStats() as any[];
     expect(stats).toHaveLength(7);
     
     // 直近の日付が含まれているか確認
@@ -44,8 +44,8 @@ describe('getDailyStats', () => {
     // 無効なクリック挿入（カウントされないはず）
     db.prepare('INSERT INTO clicks (ad_id, publisher_id, is_valid, created_at) VALUES (1, 1, 0, ?)').run(`${today} 10:35:00`);
 
-    const stats = getDailyStats();
-    const todayStats = stats.find(s => s.date === today);
+    const stats = getDailyStats() as any[];
+    const todayStats = stats.find((s: any) => s.date === today);
     
     expect(todayStats).toBeDefined();
     expect(todayStats?.impressions).toBe(2);
@@ -65,12 +65,12 @@ describe('getDailyStats', () => {
     db.prepare('INSERT INTO impressions (ad_id, publisher_id, created_at) VALUES (1, 1, ?)').run(`${today} 10:00:00`);
     db.prepare('INSERT INTO impressions (ad_id, publisher_id, created_at) VALUES (1, 2, ?)').run(`${today} 11:00:00`);
 
-    const statsForPub1 = getDailyStats({ publisherId: '1' });
-    const todayStats1 = statsForPub1.find(s => s.date === today);
+    const statsForPub1 = getDailyStats({ publisherId: '1' }) as any[];
+    const todayStats1 = statsForPub1.find((s: any) => s.date === today);
     expect(todayStats1?.impressions).toBe(1);
 
-    const statsForPub2 = getDailyStats({ publisherId: '2' });
-    const todayStats2 = statsForPub2.find(s => s.date === today);
+    const statsForPub2 = getDailyStats({ publisherId: '2' }) as any[];
+    const todayStats2 = statsForPub2.find((s: any) => s.date === today);
     expect(todayStats2?.impressions).toBe(1);
   });
 });

@@ -8,9 +8,11 @@ export async function createCampaign(formData: FormData) {
   const advertiser_id = formData.get("advertiser_id") as string;
   const name = formData.get("name") as string;
   const budget = formData.get("budget") as string;
+  const start_date = formData.get("start_date") as string;
+  const end_date = formData.get("end_date") as string;
 
-  db.prepare('INSERT INTO campaigns (advertiser_id, name, budget) VALUES (?, ?, ?)')
-    .run(advertiser_id, name, budget || 0);
+  db.prepare('INSERT INTO campaigns (advertiser_id, name, budget, start_date, end_date) VALUES (?, ?, ?, ?, ?)')
+    .run(advertiser_id, name, budget || 0, start_date || null, end_date || null);
 
   revalidatePath(`/advertiser/${advertiser_id}`);
 }

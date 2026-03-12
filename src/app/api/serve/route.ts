@@ -10,11 +10,17 @@ export async function GET(req: NextRequest) {
   }
 
   const ua = req.headers.get("user-agent") || "";
-  const ip = req.headers.get("x-forwarded-for") || req.ip || "unknown";
+  const ip = req.headers.get("x-forwarded-for") || "unknown";
   
   // 簡易デバイス判定
   const isMobile = /Mobi|Android/i.test(ua);
   const currentDevice = isMobile ? 'mobile' : 'desktop';
+
+  // 現在の時刻、曜日、時間を取得 (JST想定だがシステム時刻に依存)
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const hour = now.getHours();
+  const nowIso = now.toISOString().replace('T', ' ').split('.')[0]; // SQLiteのフォーマットに合わせる
 
   // RTB版：期待収益（eCPM）に基づき、最も収益性が高い承認済み広告を1件取得
   const ad = db.prepare(`
@@ -32,6 +38,20 @@ export async function GET(req: NextRequest) {
         AND advertisers.balance >= ad_groups.max_bid
         AND (ad_groups.target_device = 'all' OR ad_groups.target_device = ?)
         AND (ad_groups.target_publisher_ids = 'all' OR ',' || ad_groups.target_publisher_ids || ',' LIKE ?)
+        -- 期間チェック
+        AND (campaigns.start_date IS NULL OR campaigns.start_date <= ?)
+        AND (campaigns.end_date IS NULL OR campaigns.end_date >= ?)
+        -- スケジュールチェック
+        AND (
+          NOT EXISTS (SELECT 1 FROM ad_schedules WHERE ad_group_id = ad_groups.id)
+          OR EXISTS (
+            SELECT 1 FROM ad_schedules 
+            WHERE ad_group_id = ad_groups.id 
+              AND day_of_week = ? 
+              AND start_hour <= ? 
+              AND end_hour >= ?
+          )
+        )
     )
     SELECT ads.*, ad_groups.max_bid,
       CASE 
@@ -43,7 +63,7 @@ export async function GET(req: NextRequest) {
     JOIN ad_stats s ON ads.id = s.id
     ORDER BY score DESC, ads.id DESC
     LIMIT 1
-  `).get(currentDevice, `%,${publisherId},%`) as any;
+  `).get(currentDevice, `%,${publisherId},%`, nowIso, nowIso, dayOfWeek, hour, hour) as any;
 
   if (!ad) {
     return new NextResponse(null, { status: 204 });

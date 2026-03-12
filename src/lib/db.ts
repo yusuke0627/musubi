@@ -47,7 +47,18 @@ export function initSchema(database: Database.Database = db) {
       advertiser_id INTEGER,
       name TEXT NOT NULL,
       budget REAL DEFAULT 0,
+      start_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+      end_date DATETIME,
       FOREIGN KEY(advertiser_id) REFERENCES advertisers(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS ad_schedules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ad_group_id INTEGER,
+      day_of_week INTEGER NOT NULL, -- 0 (Sun) to 6 (Sat)
+      start_hour INTEGER NOT NULL,  -- 0 to 23
+      end_hour INTEGER NOT NULL,    -- 0 to 23
+      FOREIGN KEY(ad_group_id) REFERENCES ad_groups(id)
     );
 
     CREATE TABLE IF NOT EXISTS ad_groups (

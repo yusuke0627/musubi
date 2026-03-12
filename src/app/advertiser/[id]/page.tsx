@@ -88,8 +88,18 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1 font-bold">Campaign Name</label>
                 <input type="text" name="name" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-slate-200 outline-none" placeholder="e.g. Winter Sale" required />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Start Date</label>
+                  <input type="date" name="start_date" className="w-full p-2 border rounded-lg text-xs" defaultValue={new Date().toISOString().split('T')[0]} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">End Date (Optional)</label>
+                  <input type="date" name="end_date" className="w-full p-2 border rounded-lg text-xs" />
+                </div>
+              </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-bold">Budget (¥)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1 font-bold">Total Budget (¥)</label>
                 <input type="number" name="budget" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-slate-200 outline-none" placeholder="50000" />
               </div>
               <button type="submit" className="w-full bg-slate-800 text-white py-2 rounded-lg font-bold hover:bg-slate-700 transition-colors shadow-md">
