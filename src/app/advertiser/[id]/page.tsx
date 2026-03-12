@@ -182,7 +182,7 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
           </section>
         </div>
 
-        <AdsPerformanceTable ads={ads} />
+        <AdsPerformanceTable ads={ads} advertiserId={id} />
       </div>
     </div>
   );
