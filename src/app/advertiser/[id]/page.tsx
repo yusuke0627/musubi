@@ -4,6 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import StatsChart from "@/components/StatsChart";
 import AdsPerformanceTable from "@/components/AdsPerformanceTable";
+import CampaignsTable from "@/components/CampaignsTable";
+import AdGroupsTable from "@/components/AdGroupsTable";
 import { createCampaign, createAdGroup, createAd } from "./actions";
 
 interface PageProps {
@@ -16,14 +18,22 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
 
   if (!advertiser) return notFound();
 
+  // キャンペーン一覧の取得
   const campaigns = db.prepare('SELECT * FROM campaigns WHERE advertiser_id = ?').all(id) as any[];
-  const adGroups = db.prepare('SELECT ad_groups.*, campaigns.name as campaign_name FROM ad_groups JOIN campaigns ON ad_groups.campaign_id = campaigns.id WHERE campaigns.advertiser_id = ?').all(id) as any[];
-  const publishers = db.prepare('SELECT id, name FROM publishers').all() as any[];
+  
+  // アドグループ一覧の取得 (キャンペーン名を含む)
+  const adGroups = db.prepare(`
+    SELECT ad_groups.*, campaigns.name as campaign_name 
+    FROM ad_groups 
+    JOIN campaigns ON ad_groups.campaign_id = campaigns.id 
+    WHERE campaigns.advertiser_id = ?
+  `).all(id) as any[];
 
+  // 広告成果一覧の取得
   const ads = db.prepare(`
     SELECT ads.*, 
            ad_groups.name as group_name, ad_groups.max_bid, ad_groups.target_device,
-           campaigns.name as campaign_name, campaigns.start_date, campaigns.end_date,
+           campaigns.name as campaign_name, campaigns.start_date, campaigns.end_date, campaigns.budget as campaign_budget,
            (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
            (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as clicks
     FROM ads
@@ -39,10 +49,10 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        <header className="flex justify-between items-center border-b pb-6 mb-8">
+      <div className="max-w-6xl mx-auto space-y-12">
+        <header className="flex justify-between items-center border-b pb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Advertiser: {advertiser.name}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight text-center sm:text-left text-slate-900">Advertiser: {advertiser.name}</h1>
             <div className="mt-2 flex items-center gap-4">
               <span className="text-2xl font-bold text-red-600 underline decoration-red-200 underline-offset-4">Balance: ¥{advertiser.balance.toLocaleString()}</span>
               <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-slate-200">Musubi Verified</span>
@@ -52,7 +62,7 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
         </header>
 
         {/* Stats & Transparency */}
-        <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Impressions</h3>
             <div className="text-3xl font-black text-gray-900">{totalImps.toLocaleString()}</div>
@@ -73,39 +83,41 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
           </div>
         </section>
 
-        <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-          <h2 className="text-xl font-bold mb-6 text-gray-800">Performance Over Time</h2>
+        {/* Charts */}
+        <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h2 className="text-xl font-bold mb-6 text-gray-800 tracking-tight">Performance Over Time</h2>
           <StatsChart data={dailyStats} />
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        {/* Action Forms (Create New) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Step 1: Campaign */}
           <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h2 className="text-lg font-bold mb-4 text-gray-800 flex items-center">
-              <span className="bg-slate-800 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs mr-2">1</span>
+              <span className="bg-slate-800 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs mr-2 shadow-sm">1</span>
               New Campaign
             </h2>
             <form action={createCampaign} className="space-y-4">
               <input type="hidden" name="advertiser_id" value={id} />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-bold">Campaign Name</label>
-                <input type="text" name="name" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-slate-200 outline-none" placeholder="e.g. Winter Sale" required />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Campaign Name</label>
+                <input type="text" name="name" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-slate-200 outline-none" placeholder="e.g. Winter Sale" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Start Date</label>
-                  <input type="date" name="start_date" className="w-full p-2 border rounded-lg text-xs" defaultValue={new Date().toISOString().split('T')[0]} />
+                  <input type="date" name="start_date" className="w-full p-2 border border-gray-200 rounded-lg text-xs" defaultValue={new Date().toISOString().split('T')[0]} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">End Date (Optional)</label>
-                  <input type="date" name="end_date" className="w-full p-2 border rounded-lg text-xs" />
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">End Date</label>
+                  <input type="date" name="end_date" className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-bold">Total Budget (¥)</label>
-                <input type="number" name="budget" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-slate-200 outline-none" placeholder="50000" />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Total Budget (¥)</label>
+                <input type="number" name="budget" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-slate-200 outline-none" placeholder="50000" />
               </div>
-              <button type="submit" className="w-full bg-slate-800 text-white py-2 rounded-lg font-bold hover:bg-slate-700 transition-colors shadow-md">
+              <button type="submit" className="w-full bg-slate-800 text-white py-2.5 rounded-lg font-bold hover:bg-slate-700 transition-colors shadow-md">
                 Create Campaign
               </button>
             </form>
@@ -114,24 +126,24 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
           {/* Step 2: Ad Group */}
           <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h2 className="text-lg font-bold mb-4 text-gray-800 flex items-center">
-              <span className="bg-emerald-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs mr-2">2</span>
+              <span className="bg-emerald-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs mr-2 shadow-sm">2</span>
               New Ad Group
             </h2>
             <form action={createAdGroup} className="space-y-4">
               <input type="hidden" name="advertiser_id" value={id} />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-bold">Select Campaign</label>
-                <select name="campaign_id" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-emerald-100 outline-none" required>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Select Campaign</label>
+                <select name="campaign_id" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-100 outline-none bg-white" required>
                   {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-bold">Group Name</label>
-                <input type="text" name="name" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-emerald-100 outline-none" placeholder="e.g. Mobile Users" required />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Group Name</label>
+                <input type="text" name="name" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-100 outline-none" placeholder="e.g. Mobile Users" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-bold">Max Bid (¥)</label>
-                <input type="number" name="max_bid" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-emerald-100 outline-none" placeholder="50" required />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Max Bid (¥)</label>
+                <input type="number" name="max_bid" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-100 outline-none" placeholder="50" required />
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-wider font-black text-gray-400 mb-2">Target Device</label>
@@ -143,7 +155,7 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
                   ))}
                 </div>
               </div>
-              <button type="submit" className="w-full bg-emerald-600 text-white py-2 rounded-lg font-bold hover:bg-emerald-700 transition-colors shadow-md">
+              <button type="submit" className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-bold hover:bg-emerald-700 transition-colors shadow-md">
                 Create Ad Group
               </button>
             </form>
@@ -152,37 +164,42 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
           {/* Step 3: Ad */}
           <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h2 className="text-lg font-bold mb-4 text-gray-800 flex items-center">
-              <span className="bg-blue-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs mr-2">3</span>
+              <span className="bg-blue-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs mr-2 shadow-sm">3</span>
               New Ad
             </h2>
             <form action={createAd} className="space-y-4">
               <input type="hidden" name="advertiser_id" value={id} />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-bold">Ad Group</label>
-                <select name="ad_group_id" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-100 outline-none" required>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Ad Group</label>
+                <select name="ad_group_id" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none bg-white" required>
                   {adGroups.map(g => <option key={g.id} value={g.id}>{g.name} ({g.campaign_name})</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-bold">Title</label>
-                <input type="text" name="title" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-100 outline-none" placeholder="Ad Title" required />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Title</label>
+                <input type="text" name="title" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none" placeholder="Ad Title" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-bold">Image URL</label>
-                <input type="url" name="image_url" className="w-full p-2 border rounded-lg text-xs" defaultValue="https://placehold.jp/300x250.png?text=New+Ad" required />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Image URL</label>
+                <input type="url" name="image_url" className="w-full p-2 border border-gray-200 rounded-lg text-xs" defaultValue="https://placehold.jp/300x250.png?text=New+Ad" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 font-bold">Target URL</label>
-                <input type="url" name="target_url" className="w-full p-2 border rounded-lg text-xs" placeholder="https://..." required />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Target URL</label>
+                <input type="url" name="target_url" className="w-full p-2 border border-gray-200 rounded-lg text-xs" placeholder="https://..." required />
               </div>
-              <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-md">
+              <button type="submit" className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-md">
                 Publish Ad
               </button>
             </form>
           </section>
         </div>
 
-        <AdsPerformanceTable ads={ads} advertiserId={id} />
+        {/* Management Tables Section */}
+        <div className="space-y-8">
+          <CampaignsTable campaigns={campaigns} advertiserId={id} />
+          <AdGroupsTable adGroups={adGroups} campaigns={campaigns} advertiserId={id} />
+          <AdsPerformanceTable ads={ads} adGroups={adGroups} advertiserId={id} />
+        </div>
       </div>
     </div>
   );

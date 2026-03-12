@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { updateCampaign, updateAdGroup, updateAd } from "@/app/advertiser/[id]/actions";
 
 interface EditModalProps {
@@ -9,9 +8,11 @@ interface EditModalProps {
   advertiserId: string;
   type: "campaign" | "adGroup" | "ad";
   data: any;
+  campaigns?: any[];
+  adGroups?: any[];
 }
 
-export default function EditModal({ isOpen, onClose, advertiserId, type, data }: EditModalProps) {
+export default function EditModal({ isOpen, onClose, advertiserId, type, data, campaigns = [], adGroups = [] }: EditModalProps) {
   if (!isOpen) return null;
 
   const handleSubmit = async (formData: FormData) => {
@@ -39,7 +40,7 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data }:
             <>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Campaign Name</label>
-                <input type="text" name="name" defaultValue={data.campaign_name || data.name} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-slate-200" required />
+                <input type="text" name="name" defaultValue={data.name || data.campaign_name} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-slate-200" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -61,8 +62,14 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data }:
           {type === "adGroup" && (
             <>
               <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Parent Campaign</label>
+                <select name="campaign_id" defaultValue={data.campaign_id} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-100 bg-white" required>
+                  {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Group Name</label>
-                <input type="text" name="name" defaultValue={data.group_name || data.name} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-100" required />
+                <input type="text" name="name" defaultValue={data.name || data.group_name} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-100" required />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Max Bid (¥)</label>
@@ -83,6 +90,12 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data }:
 
           {type === "ad" && (
             <>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Ad Group (Parent)</label>
+                <select name="ad_group_id" defaultValue={data.ad_group_id} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-100 bg-white" required>
+                  {adGroups.map(g => <option key={g.id} value={g.id}>{g.name} ({g.campaign_name})</option>)}
+                </select>
+              </div>
               <div className="bg-amber-50 border border-amber-100 p-3 rounded-lg mb-4 text-[11px] text-amber-800 leading-relaxed">
                 <span className="font-bold block mb-1 text-xs">⚠️ Re-review Warning</span>
                 Changing the title, description, image, or URL will set this ad to <strong>PENDING</strong> and require manual approval before serving.
