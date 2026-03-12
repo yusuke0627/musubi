@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   }
 
   const ua = req.headers.get("user-agent") || "";
-  const ip = req.headers.get("x-forwarded-for") || req.ip || "unknown";
+  const ip = req.headers.get("x-forwarded-for") || "unknown";
 
   try {
     const ad = db.prepare('SELECT target_url FROM ads WHERE id = ?').get(ad_id) as any;

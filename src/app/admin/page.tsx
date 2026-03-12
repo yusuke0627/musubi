@@ -73,15 +73,19 @@ export default async function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Click Validation */}
           <section className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[550px]">
-            <div className="p-6 border-b border-gray-100 bg-orange-50/30">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-orange-50/30">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-800 tracking-tight">Click Validation</h2>
-                <form action={processClicks}>
+                <form action={async () => {
+                  "use server";
+                  await processClicks();
+                }}>
                   <button type="submit" className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors shadow-sm whitespace-nowrap">
                     Validate & Settle Clicks ({pendingClicks.length})
                   </button>
                 </form>
               </div>
+
               
               <div className="bg-white/60 border border-orange-100 rounded-lg p-3 text-[11px] text-orange-800 leading-relaxed">
                 <p className="font-bold mb-1 flex items-center text-xs">

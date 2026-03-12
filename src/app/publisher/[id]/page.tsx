@@ -65,7 +65,10 @@ export default async function PublisherDashboard({ params }: PageProps) {
                   </p>
                 )}
               </div>
-              <form action={requestPayout}>
+              <form action={async (formData) => {
+                "use server";
+                await requestPayout(formData);
+              }}>
                 <input type="hidden" name="publisher_id" value={publisher.id} />
                 <button
                   type="submit"

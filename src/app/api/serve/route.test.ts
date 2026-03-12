@@ -76,4 +76,49 @@ describe('GET /api/serve', () => {
     const res = await GET(req);
     expect(res.status).toBe(204); // 配信されないはず
   });
+
+  it('should not serve an ad if the campaign has not started yet', async () => {
+    // 開始日を明日に設定
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowIso = tomorrow.toISOString().replace('T', ' ').split('.')[0];
+    db.prepare("UPDATE campaigns SET start_date = ? WHERE id = 1").run(tomorrowIso);
+
+    const req = new NextRequest('http://localhost/api/serve?publisher_id=1');
+    const res = await GET(req);
+    expect(res.status).toBe(204);
+  });
+
+  it('should not serve an ad if the campaign has already ended', async () => {
+    // 終了日を昨日に設定
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayIso = yesterday.toISOString().replace('T', ' ').split('.')[0];
+    db.prepare("UPDATE campaigns SET end_date = ? WHERE id = 1").run(yesterdayIso);
+
+    const req = new NextRequest('http://localhost/api/serve?publisher_id=1');
+    const res = await GET(req);
+    expect(res.status).toBe(204);
+  });
+
+  it('should respect ad group schedules', async () => {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const hour = now.getHours();
+
+    // 現在とは異なる曜日にスケジュールを設定 (例: 今日の曜日 + 1)
+    const otherDay = (dayOfWeek + 1) % 7;
+    db.prepare("INSERT INTO ad_schedules (ad_group_id, day_of_week, start_hour, end_hour) VALUES (1, ?, 0, 23)").run(otherDay);
+
+    const req = new NextRequest('http://localhost/api/serve?publisher_id=1');
+    const res = await GET(req);
+    expect(res.status).toBe(204); // スケジュール外なので配信されないはず
+
+    // 現在の曜日・時間にスケジュールを合わせる
+    db.prepare("DELETE FROM ad_schedules").run();
+    db.prepare("INSERT INTO ad_schedules (ad_group_id, day_of_week, start_hour, end_hour) VALUES (1, ?, ?, ?)").run(dayOfWeek, hour, hour);
+
+    const resOk = await GET(req);
+    expect(resOk.status).toBe(200); // スケジュール内なので配信されるはず
+  });
 });
