@@ -4,8 +4,11 @@ import { runBillingWorker } from './billing';
 
 describe('runBillingWorker', () => {
   beforeEach(() => {
+    db.exec('DROP TABLE IF EXISTS ad_group_target_publishers');
+    db.exec('DROP TABLE IF EXISTS ad_schedules');
     db.exec('DROP TABLE IF EXISTS clicks');
     db.exec('DROP TABLE IF EXISTS impressions');
+    db.exec('DROP TABLE IF EXISTS payouts');
     db.exec('DROP TABLE IF EXISTS ads');
     db.exec('DROP TABLE IF EXISTS ad_groups');
     db.exec('DROP TABLE IF EXISTS campaigns');
