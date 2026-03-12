@@ -46,10 +46,11 @@ export default function CampaignsTable({ campaigns, advertiserId }: CampaignsTab
               <tr key={c.id} className="hover:bg-gray-50 transition-colors text-sm">
                 <td className="px-6 py-4 font-bold text-gray-900">{c.name}</td>
                 <td className="px-6 py-4 text-right font-mono font-bold text-slate-700">¥{c.budget.toLocaleString()}</td>
-                <td className="px-6 py-4 text-xs text-gray-500">
-                  <div className="font-bold">{new Date(c.start_date).toLocaleDateString()}</div>
-                  <div className="text-[10px]">to {c.end_date ? new Date(c.end_date).toLocaleDateString() : 'Endless'}</div>
+                <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
+                  <div className="font-bold">{new Date(c.start_date).toLocaleDateString('ja-JP')}</div>
+                  <div className="text-[10px]">to {c.end_date ? new Date(c.end_date).toLocaleDateString('ja-JP') : 'Endless'}</div>
                 </td>
+
                 <td className="px-6 py-4 text-center">
                   <button onClick={() => setEditModal({ isOpen: true, data: c })} className="text-blue-600 hover:text-blue-800 font-bold text-[10px] uppercase">Edit</button>
                 </td>

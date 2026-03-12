@@ -97,7 +97,7 @@ export default async function PublisherDashboard({ params }: PageProps) {
                 <tbody className="bg-white divide-y divide-gray-200 text-sm">
                   {payouts.map((p) => (
                     <tr key={p.id}>
-                      <td className="px-4 py-3 whitespace-nowrap">{new Date(p.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{new Date(p.created_at).toLocaleDateString('ja-JP')}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">¥{p.amount.toLocaleString()}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`px-2 py-1 rounded text-xs font-bold ${
