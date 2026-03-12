@@ -97,6 +97,10 @@ export async function updateAd(formData: FormData) {
   // 現在のデータを取得して変更があるか確認
   const current = db.prepare('SELECT * FROM ads WHERE id = ?').get(id) as any;
   
+  // 広告審査の再トリガー判定
+  // 広告のタイトル、説明文、画像、リンク先URLのいずれかが変更された場合、
+  // 広告の「中身」が変わったとみなし、安全のため管理者の再審査（pending）を必須にします。
+  // これにより、承認後に不適切なサイトへリダイレクト先を変えるなどの不正を防ぎます。
   const isCreativeChanged = 
     current.title !== title || 
     current.description !== description || 
