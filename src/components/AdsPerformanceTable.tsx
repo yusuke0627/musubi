@@ -155,8 +155,8 @@ export default function AdsPerformanceTable({ ads }: AdsPerformanceTableProps) {
                 )}
                 {visibleColumns.has("stats") && (
                   <>
-                    <td className="px-6 py-4 text-right font-mono">{ad.impressions.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-right font-mono">{ad.clicks.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-right font-mono font-bold text-slate-700">{ad.impressions.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-right font-mono font-bold text-slate-700">{ad.clicks.toLocaleString()}</td>
                     <td className="px-6 py-4 text-center text-blue-600 font-black">
                       {ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : '0.00'}%
                     </td>
