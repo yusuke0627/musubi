@@ -40,13 +40,13 @@ function seed() {
 
   // 3. Campaigns
   const campaigns = [
-    { id: 1, advertiser_id: 1, name: 'Summer Smartphone Launch', budget: 100000 },
-    { id: 2, advertiser_id: 2, name: 'European Getaway 2026', budget: 80000 },
-    { id: 3, advertiser_id: 3, name: 'Spring Organic Fair', budget: 20000 },
+    { id: 1, advertiser_id: 1, name: 'Summer Smartphone Launch', budget: 100000, start_date: '2026-01-01 00:00:00' },
+    { id: 2, advertiser_id: 2, name: 'European Getaway 2026', budget: 80000, start_date: '2026-01-01 00:00:00' },
+    { id: 3, advertiser_id: 3, name: 'Spring Organic Fair', budget: 20000, start_date: '2026-01-01 00:00:00' },
   ];
 
-  const insertCamp = db.prepare('INSERT INTO campaigns (id, advertiser_id, name, budget) VALUES (?, ?, ?, ?)');
-  campaigns.forEach(c => insertCamp.run(c.id, c.advertiser_id, c.name, c.budget));
+  const insertCamp = db.prepare('INSERT INTO campaigns (id, advertiser_id, name, budget, start_date) VALUES (?, ?, ?, ?, ?)');
+  campaigns.forEach(c => insertCamp.run(c.id, c.advertiser_id, c.name, c.budget, c.start_date));
 
   // 4. Ad Groups
   const adGroups = [
