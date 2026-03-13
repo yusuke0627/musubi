@@ -1,10 +1,10 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const db = new Database(path.join(process.cwd(), 'adnetwork.db'));
+import db, { initSchema } from '../lib/db';
 
 function seed() {
   console.log('🌱 Seeding realistic data...');
+
+  // テーブルの初期化
+  initSchema(db);
 
   // 既存データの削除
   db.exec(`
@@ -80,7 +80,8 @@ function seed() {
   // 6. Historical Data (Last 7 Days)
   console.log('📈 Generating historical stats...');
   const insertImp = db.prepare('INSERT INTO impressions (ad_id, publisher_id, user_agent, ip_address, created_at) VALUES (?, ?, ?, ?, ?)');
-  const insertClick = db.prepare('INSERT INTO clicks (ad_id, publisher_id, user_agent, ip_address, is_valid, processed, created_at) VALUES (?, ?, ?, ?, 1, 1, ?)');
+  const insertClick = db.prepare('INSERT INTO clicks (ad_id, publisher_id, campaign_id, cost, user_agent, ip_address, is_valid, processed, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, 1, ?)');
+  const updateSpent = db.prepare('UPDATE campaigns SET spent = spent + ? WHERE id = ?');
 
   for (let i = 0; i < 7; i++) {
     const date = new Date();
@@ -88,6 +89,11 @@ function seed() {
     const dateStr = date.toISOString().split('T')[0];
 
     ads.forEach(ad => {
+      // 広告の campaign_id と max_bid を取得
+      const group = adGroups.find(g => g.id === ad.group_id);
+      const campaignId = group?.campaign_id;
+      const cost = group?.max_bid || 0;
+
       publishers.forEach(pub => {
         const imps = Math.floor(Math.random() * 50) + 10;
         const clicks = Math.floor(imps * (Math.random() * 0.1));
@@ -96,7 +102,10 @@ function seed() {
           insertImp.run(ad.id, pub.id, 'Mozilla/5.0...', '127.0.0.1', `${dateStr} 12:00:00`);
         }
         for (let j = 0; j < clicks; j++) {
-          insertClick.run(ad.id, pub.id, 'Mozilla/5.0...', '127.0.0.1', `${dateStr} 12:05:00`);
+          insertClick.run(ad.id, pub.id, campaignId, cost, 'Mozilla/5.0...', '127.0.0.1', `${dateStr} 12:05:00`);
+          if (campaignId) {
+            updateSpent.run(cost, campaignId);
+          }
         }
       });
     });

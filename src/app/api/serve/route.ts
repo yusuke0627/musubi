@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
       JOIN advertisers ON campaigns.advertiser_id = advertisers.id
       WHERE ads.status = 'approved'
         AND advertisers.balance >= ad_groups.max_bid
+        -- キャンペーン予算チェック
+        AND campaigns.spent < campaigns.budget
         AND (ad_groups.target_device = 'all' OR ad_groups.target_device = ?)
         -- 配信先チェック (is_all_publishers または 中間テーブルに存在するか)
         AND (
