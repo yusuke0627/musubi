@@ -49,7 +49,8 @@ describe('GET /api/serve', () => {
     const html = await res.text();
     expect(html).toContain('Ad 1');
     expect(html).toContain('http://img.com');
-    expect(html).toContain('/api/click?ad_id=1&publisher_id=1');
+    // React's automatic escaping changes '&' to '&amp;'
+    expect(html).toContain('/api/click?ad_id=1&amp;publisher_id=1');
 
     // DBにインプレッションが記録されているか確認
     const imp = db.prepare('SELECT * FROM impressions WHERE ad_id = 1 AND publisher_id = 1').get() as any;
@@ -141,5 +142,20 @@ describe('GET /api/serve', () => {
     const reqOk = new NextRequest('http://localhost/api/serve?publisher_id=99');
     const resOk = await GET(reqOk);
     expect(resOk.status).toBe(200); // 配信されるはず
+  });
+
+  it('should escape ad title and description to prevent XSS', async () => {
+    // スクリプトを含む広告を登録
+    db.prepare("UPDATE ads SET title = '<script>alert(1)</script>', description = '\" onclick=\"alert(2)' WHERE id = 1").run();
+
+    const req = new NextRequest('http://localhost/api/serve?publisher_id=1');
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    
+    const html = await res.text();
+    // スクリプトタグがエスケープされていることを確認
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(html).toContain('&quot; onclick=&quot;alert(2)');
   });
 });

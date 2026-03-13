@@ -81,21 +81,16 @@ export async function GET(req: NextRequest) {
   db.prepare('INSERT INTO impressions (ad_id, publisher_id, user_agent, ip_address) VALUES (?, ?, ?, ?)')
     .run(ad.id, publisherId, ua, ip);
 
-  // シンプルなHTML断片を返す
-  const clickUrl = `${new URL(req.url).origin}/api/click?ad_id=${ad.id}&publisher_id=${publisherId}`;
+  // Reactコンポーネントを使用して安全なHTMLを生成 (自動エスケープによるXSS対策)
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const AdCreative = (await import('@/components/AdCreative')).default;
   
-  const html = `
-    <a href="${clickUrl}" target="_blank" style="text-decoration: none; color: inherit; display: block;">
-      <div style="border: 1px solid #ccc; padding: 10px; text-align: center; font-family: sans-serif; max-width: 300px; cursor: pointer; background: white;">
-        <h4 style="margin: 0 0 5px 0; color: #333;">${ad.title}</h4>
-        <p style="font-size: 12px; color: #666; margin: 0 0 10px 0;">${ad.description}</p>
-        <img src="${ad.image_url}" style="width: 100%; border-radius: 4px; background: #eee; min-height: 100px; object-fit: cover;" alt="Ad Image" />
-        <div style="font-size: 10px; color: #999; margin-top: 5px;">Sponsored by AdNetwork</div>
-      </div>
-    </a>
-  `;
+  const clickUrl = `${new URL(req.url).origin}/api/click?ad_id=${ad.id}&publisher_id=${publisherId}`;
+  const adHtml = renderToStaticMarkup(
+    <AdCreative ad={ad} clickUrl={clickUrl} />
+  );
 
-  return new NextResponse(html, {
+  return new NextResponse(`<!DOCTYPE html><html><body style="margin:0;">${adHtml}</body></html>`, {
     headers: { "Content-Type": "text/html" },
   });
 }
