@@ -21,7 +21,7 @@ describe('GET /api/serve', () => {
     // テスト用のマスタデータを投入
     db.prepare("INSERT INTO advertisers (id, name, balance) VALUES (1, 'Adv 1', 1000)").run();
     db.prepare("INSERT INTO publishers (id, name, domain) VALUES (1, 'Pub 1', 'p1.com')").run();
-    db.prepare("INSERT INTO campaigns (id, advertiser_id, name) VALUES (1, 1, 'Camp 1')").run();
+    db.prepare("INSERT INTO campaigns (id, advertiser_id, name, budget, spent) VALUES (1, 1, 'Camp 1', 1000, 0)").run();
     db.prepare("INSERT INTO ad_groups (id, campaign_id, name, max_bid, target_device, is_all_publishers) VALUES (1, 1, 'Group 1', 100, 'all', 1)").run();
     db.prepare("INSERT INTO ads (id, ad_group_id, title, description, image_url, target_url, status) VALUES (1, 1, 'Ad 1', 'Desc 1', 'http://img.com', 'http://target.com', 'approved')").run();
   });

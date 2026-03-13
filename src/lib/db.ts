@@ -47,6 +47,7 @@ export function initSchema(database: Database.Database = db) {
       advertiser_id INTEGER,
       name TEXT NOT NULL,
       budget REAL DEFAULT 0,
+      spent REAL DEFAULT 0,
       start_date DATETIME DEFAULT CURRENT_TIMESTAMP,
       end_date DATETIME,
       FOREIGN KEY(advertiser_id) REFERENCES advertisers(id)
@@ -106,14 +107,17 @@ export function initSchema(database: Database.Database = db) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       ad_id INTEGER,
       publisher_id INTEGER,
+      campaign_id INTEGER,
       user_agent TEXT,
       ip_address TEXT,
-      is_valid INTEGER DEFAULT 1,
+      cost REAL DEFAULT 0,
+      is_valid INTEGER DEFAULT 0,
       processed INTEGER DEFAULT 0,
       invalid_reason TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(ad_id) REFERENCES ads(id),
-      FOREIGN KEY(publisher_id) REFERENCES publishers(id)
+      FOREIGN KEY(publisher_id) REFERENCES publishers(id),
+      FOREIGN KEY(campaign_id) REFERENCES campaigns(id)
     );
   `);
 }
