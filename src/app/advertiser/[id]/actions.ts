@@ -2,30 +2,66 @@
 
 import db from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+// Zod Schemas
+const CampaignSchema = z.object({
+  advertiser_id: z.coerce.number().int().positive(),
+  name: z.string().min(1, "Name is required").max(100),
+  budget: z.coerce.number().nonnegative().default(0),
+  start_date: z.string().nullable().optional().transform(v => v === "" ? null : v),
+  end_date: z.string().nullable().optional().transform(v => v === "" ? null : v),
+});
+
+const AdGroupSchema = z.object({
+  advertiser_id: z.coerce.number().int().positive(),
+  campaign_id: z.coerce.number().int().positive(),
+  name: z.string().min(1, "Name is required").max(100),
+  max_bid: z.coerce.number().positive("Bid must be greater than 0"),
+  target_device: z.enum(["all", "desktop", "mobile"]),
+  target_publishers: z.array(z.string()).optional().default([]),
+});
+
+const AdSchema = z.object({
+  advertiser_id: z.coerce.number().int().positive(),
+  ad_group_id: z.coerce.number().int().positive(),
+  title: z.string().min(1, "Title is required").max(255),
+  description: z.string().max(1000).optional().default(""),
+  image_url: z.string().url("Must be a valid URL"),
+  target_url: z.string().url("Must be a valid URL"),
+});
 
 // キャンペーン作成
 export async function createCampaign(formData: FormData) {
-  const advertiser_id = formData.get("advertiser_id") as string;
-  const name = formData.get("name") as string;
-  const budget = formData.get("budget") as string;
-  const start_date = formData.get("start_date") as string;
-  const end_date = formData.get("end_date") as string;
+  const data = Object.fromEntries(formData.entries());
+  const parsed = CampaignSchema.safeParse(data);
+
+  if (!parsed.success) {
+    console.error(parsed.error.issues);
+    throw new Error("Invalid campaign data");
+  }
+
+  const { advertiser_id, name, budget, start_date, end_date } = parsed.data;
 
   db.prepare('INSERT INTO campaigns (advertiser_id, name, budget, start_date, end_date) VALUES (?, ?, ?, ?, ?)')
-    .run(advertiser_id, name, budget || 0, start_date || null, end_date || null);
+    .run(advertiser_id, name, budget, start_date, end_date);
 
   revalidatePath(`/advertiser/${advertiser_id}`);
 }
 
 // アドグループ作成
 export async function createAdGroup(formData: FormData) {
-  const advertiser_id = formData.get("advertiser_id") as string;
-  const campaign_id = formData.get("campaign_id") as string;
-  const name = formData.get("name") as string;
-  const max_bid = formData.get("max_bid") as string;
-  const target_device = formData.get("target_device") as string;
-  const target_publishers = formData.getAll("target_publishers") as string[];
+  const data = Object.fromEntries(formData.entries());
+  // Handle multiple values for target_publishers
+  data.target_publishers = formData.getAll("target_publishers") as any;
+  const parsed = AdGroupSchema.safeParse(data);
 
+  if (!parsed.success) {
+    console.error(parsed.error.issues);
+    throw new Error("Invalid ad group data");
+  }
+
+  const { advertiser_id, campaign_id, name, max_bid, target_device, target_publishers } = parsed.data;
   const isAll = target_publishers.includes('all') || target_publishers.length === 0;
 
   db.transaction(() => {
@@ -37,7 +73,9 @@ export async function createAdGroup(formData: FormData) {
     if (!isAll) {
       const insertTarget = db.prepare('INSERT INTO ad_group_target_publishers (ad_group_id, publisher_id) VALUES (?, ?)');
       target_publishers.forEach(pubId => {
-        insertTarget.run(adGroupId, pubId);
+        if (pubId !== 'all') {
+          insertTarget.run(adGroupId, parseInt(pubId, 10));
+        }
       });
     }
   })();
@@ -47,12 +85,15 @@ export async function createAdGroup(formData: FormData) {
 
 // 広告作成
 export async function createAd(formData: FormData) {
-  const advertiser_id = formData.get("advertiser_id") as string;
-  const ad_group_id = formData.get("ad_group_id") as string;
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const image_url = formData.get("image_url") as string;
-  const target_url = formData.get("target_url") as string;
+  const data = Object.fromEntries(formData.entries());
+  const parsed = AdSchema.safeParse(data);
+
+  if (!parsed.success) {
+    console.error(parsed.error.issues);
+    throw new Error("Invalid ad data");
+  }
+
+  const { advertiser_id, ad_group_id, title, description, image_url, target_url } = parsed.data;
 
   db.prepare('INSERT INTO ads (ad_group_id, title, description, image_url, target_url, status) VALUES (?, ?, ?, ?, ?, ?)')
     .run(ad_group_id, title, description, image_url, target_url, 'pending');
@@ -62,29 +103,40 @@ export async function createAd(formData: FormData) {
 
 // キャンペーン更新
 export async function updateCampaign(formData: FormData) {
-  const id = formData.get("id") as string;
-  const advertiser_id = formData.get("advertiser_id") as string;
-  const name = formData.get("name") as string;
-  const budget = formData.get("budget") as string;
-  const start_date = formData.get("start_date") as string;
-  const end_date = formData.get("end_date") as string;
+  const data = Object.fromEntries(formData.entries());
+  const id = parseInt(data.id as string, 10);
+  if (isNaN(id)) throw new Error("Invalid campaign ID");
+
+  const parsed = CampaignSchema.safeParse(data);
+
+  if (!parsed.success) {
+    console.error(parsed.error.issues);
+    throw new Error("Invalid campaign data");
+  }
+
+  const { advertiser_id, name, budget, start_date, end_date } = parsed.data;
 
   db.prepare('UPDATE campaigns SET name = ?, budget = ?, start_date = ?, end_date = ? WHERE id = ?')
-    .run(name, budget, start_date, end_date || null, id);
+    .run(name, budget, start_date, end_date, id);
 
   revalidatePath(`/advertiser/${advertiser_id}`);
 }
 
 // アドグループ更新
 export async function updateAdGroup(formData: FormData) {
-  const id = formData.get("id") as string;
-  const advertiser_id = formData.get("advertiser_id") as string;
-  const campaign_id = formData.get("campaign_id") as string;
-  const name = formData.get("name") as string;
-  const max_bid = formData.get("max_bid") as string;
-  const target_device = formData.get("target_device") as string;
-  const target_publishers = formData.getAll("target_publishers") as string[];
+  const data = Object.fromEntries(formData.entries());
+  const id = parseInt(data.id as string, 10);
+  if (isNaN(id)) throw new Error("Invalid ad group ID");
 
+  data.target_publishers = formData.getAll("target_publishers") as any;
+  const parsed = AdGroupSchema.safeParse(data);
+
+  if (!parsed.success) {
+    console.error(parsed.error.issues);
+    throw new Error("Invalid ad group data");
+  }
+
+  const { advertiser_id, campaign_id, name, max_bid, target_device, target_publishers } = parsed.data;
   const isAll = target_publishers.includes('all') || target_publishers.length === 0;
 
   db.transaction(() => {
@@ -97,7 +149,9 @@ export async function updateAdGroup(formData: FormData) {
     if (!isAll) {
       const insertTarget = db.prepare('INSERT INTO ad_group_target_publishers (ad_group_id, publisher_id) VALUES (?, ?)');
       target_publishers.forEach(pubId => {
-        insertTarget.run(id, pubId);
+        if (pubId !== 'all') {
+          insertTarget.run(id, parseInt(pubId, 10));
+        }
       });
     }
   })();
@@ -107,13 +161,18 @@ export async function updateAdGroup(formData: FormData) {
 
 // 広告更新 (再審査ロジック付き)
 export async function updateAd(formData: FormData) {
-  const id = formData.get("id") as string;
-  const advertiser_id = formData.get("advertiser_id") as string;
-  const ad_group_id = formData.get("ad_group_id") as string;
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const image_url = formData.get("image_url") as string;
-  const target_url = formData.get("target_url") as string;
+  const data = Object.fromEntries(formData.entries());
+  const id = parseInt(data.id as string, 10);
+  if (isNaN(id)) throw new Error("Invalid ad ID");
+
+  const parsed = AdSchema.safeParse(data);
+
+  if (!parsed.success) {
+    console.error(parsed.error.issues);
+    throw new Error("Invalid ad data");
+  }
+
+  const { advertiser_id, ad_group_id, title, description, image_url, target_url } = parsed.data;
 
   // 現在のデータを取得して変更があるか確認
   const current = db.prepare('SELECT * FROM ads WHERE id = ?').get(id) as any;
