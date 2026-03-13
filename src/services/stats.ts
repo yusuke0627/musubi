@@ -33,3 +33,36 @@ export function getDailyStats(filter: { advertiserId?: string, publisherId?: str
   const queryParams = filter.advertiserId || filter.publisherId ? [...params, ...params] : [];
   return db.prepare(query).all(...queryParams);
 }
+
+export function getPlacementStats(advertiserId: string) {
+  const query = `
+    SELECT 
+      p.id,
+      p.name, 
+      p.domain, 
+      COALESCE(i.imps, 0) as impressions, 
+      COALESCE(c.clicks, 0) as clicks
+    FROM publishers p
+    LEFT JOIN (
+        SELECT publisher_id, COUNT(*) as imps 
+        FROM impressions i
+        JOIN ads a ON i.ad_id = a.id
+        JOIN ad_groups ag ON a.ad_group_id = ag.id
+        JOIN campaigns cp ON ag.campaign_id = cp.id
+        WHERE cp.advertiser_id = ?
+        GROUP BY publisher_id
+    ) i ON p.id = i.publisher_id
+    LEFT JOIN (
+        SELECT publisher_id, COUNT(*) as clicks 
+        FROM clicks c
+        JOIN ads a ON c.ad_id = a.id
+        JOIN ad_groups ag ON a.ad_group_id = ag.id
+        JOIN campaigns cp ON ag.campaign_id = cp.id
+        WHERE cp.advertiser_id = ? AND c.is_valid = 1
+        GROUP BY publisher_id
+    ) c ON p.id = c.publisher_id
+    WHERE i.imps > 0 OR c.clicks > 0
+    ORDER BY impressions DESC
+  `;
+  return db.prepare(query).all(advertiserId, advertiserId);
+}
