@@ -2,9 +2,22 @@
 
 import db from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+const PayoutRequestSchema = z.object({
+  publisher_id: z.coerce.number().int().positive(),
+});
 
 export async function requestPayout(formData: FormData) {
-  const publisherId = formData.get("publisher_id") as string;
+  const data = Object.fromEntries(formData.entries());
+  const parsed = PayoutRequestSchema.safeParse(data);
+
+  if (!parsed.success) {
+    console.error(parsed.error.issues);
+    return { success: false, error: "Invalid publisher ID" };
+  }
+
+  const publisherId = parsed.data.publisher_id;
   const publisher = db.prepare('SELECT balance FROM publishers WHERE id = ?').get(publisherId) as any;
 
   if (publisher && publisher.balance >= 1000) {
