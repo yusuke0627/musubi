@@ -119,6 +119,25 @@ export default async function PublisherDashboard({ params }: PageProps) {
           {/* Integration Section */}
           <div className="flex flex-col gap-8">
             <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <h2 className="text-xl font-bold mb-4 text-gray-800">ads.txt Configuration</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                プラットフォームの透明性を高めるため、以下のリンクからあなたの <code>ads.txt</code> を取得し、あなたのサイトのルートディレクトリに配置してください。
+              </p>
+              <div className="bg-gray-50 p-4 rounded-lg flex items-center justify-between border">
+                <code className="text-sm text-gray-800 truncate">
+                  /api/ads.txt?publisher_id={publisher.id}
+                </code>
+                <a 
+                  href={`/api/ads.txt?publisher_id=${publisher.id}`} 
+                  target="_blank"
+                  className="ml-4 text-sm font-medium text-blue-600 hover:text-blue-800 whitespace-nowrap"
+                >
+                  View ads.txt ↗
+                </a>
+              </div>
+            </section>
+
+            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold mb-4 text-gray-800">Ad Tag Integration</h2>
               <p className="text-sm text-gray-600 mb-4">下記のタグをあなたのサイト (<code>{publisher.domain}</code>) に埋め込んでください。</p>
               <pre className="bg-gray-900 text-emerald-400 p-4 rounded-lg text-xs overflow-x-auto font-mono">
