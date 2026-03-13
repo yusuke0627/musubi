@@ -4,6 +4,8 @@ import Link from "next/link";
 import StatsChart from "@/components/StatsChart";
 import { processClicks, completePayout, updateRevShare, reviewAd } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboard() {
   const stats = db.prepare(`
     SELECT 
