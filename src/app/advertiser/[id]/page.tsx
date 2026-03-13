@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import db from "@/lib/db";
 import { getDailyStats, getPlacementStats } from "@/services/stats";
 import Link from "next/link";
