@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import db, { initSchema } from '@/lib/db';
-import { getDailyStats } from './stats';
+import { getDailyStats, getPlacementStats } from './stats';
 
 describe('getDailyStats', () => {
   beforeEach(() => {
@@ -75,5 +75,56 @@ describe('getDailyStats', () => {
     const statsForPub2 = getDailyStats({ publisherId: '2' }) as any[];
     const todayStats2 = statsForPub2.find((s: any) => s.date === today);
     expect(todayStats2?.impressions).toBe(1);
+  });
+});
+
+describe('getPlacementStats', () => {
+  beforeEach(() => {
+    db.exec('DROP TABLE IF EXISTS ad_group_target_publishers');
+    db.exec('DROP TABLE IF EXISTS ad_schedules');
+    db.exec('DROP TABLE IF EXISTS clicks');
+    db.exec('DROP TABLE IF EXISTS impressions');
+    db.exec('DROP TABLE IF EXISTS payouts');
+    db.exec('DROP TABLE IF EXISTS ads');
+    db.exec('DROP TABLE IF EXISTS ad_groups');
+    db.exec('DROP TABLE IF EXISTS campaigns');
+    db.exec('DROP TABLE IF EXISTS publishers');
+    db.exec('DROP TABLE IF EXISTS advertisers');
+    initSchema(db);
+  });
+
+  it('should return placement statistics for an advertiser', () => {
+    // テストデータの投入
+    db.prepare("INSERT INTO advertisers (id, name) VALUES (1, 'Adv 1')").run();
+    db.prepare("INSERT INTO advertisers (id, name) VALUES (2, 'Adv 2')").run();
+    
+    db.prepare("INSERT INTO publishers (id, name, domain) VALUES (1, 'Pub 1', 'p1.com')").run();
+    db.prepare("INSERT INTO publishers (id, name, domain) VALUES (2, 'Pub 2', 'p2.com')").run();
+    
+    db.prepare("INSERT INTO campaigns (id, advertiser_id, name) VALUES (1, 1, 'Camp 1')").run();
+    db.prepare("INSERT INTO ad_groups (id, campaign_id, name) VALUES (1, 1, 'Group 1')").run();
+    db.prepare("INSERT INTO ads (id, ad_group_id, title, target_url) VALUES (1, 1, 'Ad 1', 'http://a1.com')").run();
+
+    // 広告主1のインプレッションとクリック
+    db.prepare('INSERT INTO impressions (ad_id, publisher_id) VALUES (1, 1)').run();
+    db.prepare('INSERT INTO impressions (ad_id, publisher_id) VALUES (1, 1)').run();
+    db.prepare('INSERT INTO impressions (ad_id, publisher_id) VALUES (1, 2)').run();
+    db.prepare('INSERT INTO clicks (ad_id, publisher_id, is_valid, processed) VALUES (1, 1, 1, 1)').run();
+
+    const stats = getPlacementStats('1') as any[];
+    
+    expect(stats).toHaveLength(2);
+    
+    const pub1 = stats.find(s => s.id === 1);
+    expect(pub1?.impressions).toBe(2);
+    expect(pub1?.clicks).toBe(1);
+    
+    const pub2 = stats.find(s => s.id === 2);
+    expect(pub2?.impressions).toBe(1);
+    expect(pub2?.clicks).toBe(0);
+
+    // 他の広告主の結果が含まれないことの確認
+    const statsForAdv2 = getPlacementStats('2') as any[];
+    expect(statsForAdv2).toHaveLength(0);
   });
 });

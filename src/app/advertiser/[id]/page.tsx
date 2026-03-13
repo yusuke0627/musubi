@@ -1,11 +1,12 @@
 import db from "@/lib/db";
-import { getDailyStats } from "@/services/stats";
+import { getDailyStats, getPlacementStats } from "@/services/stats";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import StatsChart from "@/components/StatsChart";
 import AdsPerformanceTable from "@/components/AdsPerformanceTable";
 import CampaignsTable from "@/components/CampaignsTable";
 import AdGroupsTable from "@/components/AdGroupsTable";
+import PlacementReportTable from "@/components/PlacementReportTable";
 import { createCampaign, createAdGroup, createAd } from "./actions";
 
 interface PageProps {
@@ -44,6 +45,7 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
   `).all(id) as any[];
 
   const dailyStats = getDailyStats({ advertiserId: id }) as any[];
+  const placementStats = getPlacementStats(id) as any[];
   const totalImps = dailyStats.reduce((acc, curr) => acc + curr.impressions, 0);
   const totalClicks = dailyStats.reduce((acc, curr) => acc + curr.clicks, 0);
 
@@ -84,10 +86,14 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
         </section>
 
         {/* Charts */}
-        <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-bold mb-6 text-gray-800 tracking-tight">Performance Over Time</h2>
-          <StatsChart data={dailyStats} />
-        </section>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h2 className="text-xl font-bold mb-6 text-gray-800 tracking-tight">Performance Over Time</h2>
+            <StatsChart data={dailyStats} />
+          </section>
+          
+          <PlacementReportTable placements={placementStats} />
+        </div>
 
         {/* Action Forms (Create New) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
