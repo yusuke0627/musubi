@@ -27,6 +27,12 @@ npm test
 npm run dev
 ```
 
+### 🔐 デモ用アカウント (Password: `password123`)
+開発・テスト用に以下のカウントが利用可能です。
+- **管理者**: `admin@adnetwork.local`
+- **広告主**: `adv1@example.com`
+- **媒体社**: `pub1@example.com`
+
 ### アーキテクチャ
 - `src/app/`: App Router による画面と API (`/api`)
 - `src/lib/`: DB接続などの共通ライブラリ
