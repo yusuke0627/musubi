@@ -1,0 +1,157 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Advertiser {
+  id        Int        @id @default(autoincrement())
+  name      String
+  balance   Float      @default(0)
+  campaigns Campaign[]
+
+  @@map("advertisers")
+}
+
+model Publisher {
+  id             Int                        @id @default(autoincrement())
+  name           String
+  domain         String
+  balance        Float                      @default(0)
+  total_earnings Float                      @default(0)
+  rev_share      Float                      @default(0.7)
+  payouts        Payout[]
+  targetGroups   AdGroupTargetPublisher[]
+  impressions    Impression[]
+  clicks         Click[]
+
+  @@map("publishers")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  password_hash String
+  role          String   // admin, advertiser, publisher
+  linked_id     Int?
+  created_at    DateTime @default(now())
+
+  @@map("users")
+}
+
+model Payout {
+  id           Int       @id @default(autoincrement())
+  publisher_id Int
+  amount       Float
+  status       String    @default("pending")
+  created_at   DateTime  @default(now())
+  paid_at      DateTime?
+  publisher    Publisher @relation(fields: [publisher_id], references: [id])
+
+  @@map("payouts")
+}
+
+model Campaign {
+  id            Int       @id @default(autoincrement())
+  advertiser_id Int
+  name          String
+  budget        Float     @default(0)
+  spent         Float     @default(0)
+  start_date    DateTime  @default(now())
+  end_date      DateTime?
+  advertiser    Advertiser @relation(fields: [advertiser_id], references: [id])
+  adGroups      AdGroup[]
+  clicks        Click[]
+
+  @@map("campaigns")
+}
+
+model AdSchedule {
+  id          Int     @id @default(autoincrement())
+  ad_group_id Int
+  day_of_week Int     // 0 (Sun) to 6 (Sat)
+  start_hour  Int
+  end_hour    Int
+  adGroup     AdGroup @relation(fields: [ad_group_id], references: [id])
+
+  @@map("ad_schedules")
+}
+
+model AdGroup {
+  id                Int                        @id @default(autoincrement())
+  campaign_id       Int
+  name              String
+  max_bid           Float                      @default(10)
+  target_device     String                     @default("all")
+  is_all_publishers Int                        @default(1) // 1: All, 0: Specific
+  campaign          Campaign                   @relation(fields: [campaign_id], references: [id])
+  schedules         AdSchedule[]
+  targetPublishers  AdGroupTargetPublisher[]
+  ads               Ad[]
+
+  @@map("ad_groups")
+}
+
+model AdGroupTargetPublisher {
+  ad_group_id  Int
+  publisher_id Int
+  adGroup      AdGroup   @relation(fields: [ad_group_id], references: [id])
+  publisher    Publisher @relation(fields: [publisher_id], references: [id])
+
+  @@id([ad_group_id, publisher_id])
+  @@map("ad_group_target_publishers")
+}
+
+model Ad {
+  id               Int          @id @default(autoincrement())
+  ad_group_id      Int
+  title            String
+  description      String?
+  image_url        String?
+  target_url       String
+  status           String       @default("pending")
+  rejection_reason String?
+  adGroup          AdGroup      @relation(fields: [ad_group_id], references: [id])
+  impressions      Impression[]
+  clicks           Click[]
+
+  @@map("ads")
+}
+
+model Impression {
+  id           Int       @id @default(autoincrement())
+  ad_id        Int
+  publisher_id Int
+  user_agent   String?
+  ip_address   String?
+  created_at   DateTime  @default(now())
+  ad           Ad        @relation(fields: [ad_id], references: [id])
+  publisher    Publisher @relation(fields: [publisher_id], references: [id])
+
+  @@map("impressions")
+}
+
+model Click {
+  id             Int       @id @default(autoincrement())
+  ad_id          Int
+  publisher_id   Int
+  campaign_id    Int?
+  user_agent     String?
+  ip_address     String?
+  cost           Float     @default(0)
+  is_valid       Int       @default(0)
+  processed      Int       @default(0)
+  invalid_reason String?
+  created_at     DateTime  @default(now())
+  ad             Ad        @relation(fields: [ad_id], references: [id])
+  publisher      Publisher @relation(fields: [publisher_id], references: [id])
+  campaign       Campaign? @relation(fields: [campaign_id], references: [id])
+
+  @@map("clicks")
+}

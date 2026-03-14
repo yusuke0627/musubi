@@ -1,11 +1,11 @@
-import db from "@/lib/db";
+import prisma from "@/lib/db";
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
 
 export default async function Home() {
   const session = await auth();
-  const advertisers = db.prepare("SELECT id, name FROM advertisers").all() as { id: number; name: string }[];
-  const publishers = db.prepare("SELECT id, name FROM publishers").all() as { id: number; name: string }[];
+  const advertisers = await prisma.advertiser.findMany({ select: { id: true, name: true } });
+  const publishers = await prisma.publisher.findMany({ select: { id: true, name: true } });
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

@@ -1,16 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import db, { initSchema } from '@/lib/db';
+import prisma from '@/lib/db';
 import { GET } from './route';
+import { clearDatabase } from '@/lib/test-utils';
 
 describe('GET /api/ads.txt', () => {
-  beforeEach(() => {
-    // Clear and initialize DB
-    db.exec('DROP TABLE IF EXISTS publishers');
-    initSchema(db);
+  beforeEach(async () => {
+    await clearDatabase();
 
     // Insert mock publisher
-    db.prepare("INSERT INTO publishers (id, name, domain) VALUES (1, 'Test Publisher', 'test.com')").run();
+    await prisma.publisher.create({
+      data: { id: 1, name: 'Test Publisher', domain: 'test.com' }
+    });
   });
 
   it('should return 400 if publisher_id is missing', async () => {

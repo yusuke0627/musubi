@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import prisma from "@/lib/db";
 import { getDailyStats, getPlacementStats } from "@/services/stats";
 import Link from "next/link";
 import { notFound, forbidden } from "next/navigation";
@@ -17,46 +17,74 @@ interface PageProps {
 }
 
 export default async function AdvertiserDashboard({ params }: PageProps) {
-  const { id } = await params;
+  const { id: idParam } = await params;
+  const id = parseInt(idParam, 10);
   const session = await auth();
   const user = session?.user as any;
 
   // Authorization check (IDOR Protection)
-  if (user?.role !== 'admin' && (user?.role !== 'advertiser' || user?.linked_id.toString() !== id)) {
+  if (user?.role !== 'admin' && (user?.role !== 'advertiser' || user?.linked_id !== id)) {
     return forbidden();
   }
 
-  const advertiser = db.prepare('SELECT * FROM advertisers WHERE id = ?').get(id) as any;
+  const advertiser = await prisma.advertiser.findUnique({
+    where: { id }
+  });
 
   if (!advertiser) return notFound();
 
   // キャンペーン一覧の取得
-  const campaigns = db.prepare('SELECT * FROM campaigns WHERE advertiser_id = ?').all(id) as any[];
+  const campaigns = await prisma.campaign.findMany({
+    where: { advertiser_id: id }
+  });
   
   // アドグループ一覧の取得 (キャンペーン名を含む)
-  const adGroups = db.prepare(`
-    SELECT ad_groups.*, campaigns.name as campaign_name 
-    FROM ad_groups 
-    JOIN campaigns ON ad_groups.campaign_id = campaigns.id 
-    WHERE campaigns.advertiser_id = ?
-  `).all(id) as any[];
+  const adGroupsRaw = await prisma.adGroup.findMany({
+    where: { campaign: { advertiser_id: id } },
+    include: { campaign: { select: { name: true } } }
+  });
+  const adGroups = adGroupsRaw.map(g => ({
+    ...g,
+    campaign_name: g.campaign.name
+  }));
 
   // 広告成果一覧の取得
-  const ads = db.prepare(`
-    SELECT ads.*, 
-           ad_groups.name as group_name, ad_groups.max_bid, ad_groups.target_device,
-           campaigns.name as campaign_name, campaigns.start_date, campaigns.end_date, campaigns.budget as campaign_budget,
-           (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
-           (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as clicks
-    FROM ads
-    JOIN ad_groups ON ads.ad_group_id = ad_groups.id
-    JOIN campaigns ON ad_groups.campaign_id = campaigns.id
-    WHERE campaigns.advertiser_id = ?
-    ORDER BY ads.id DESC
-  `).all(id) as any[];
+  const adsRaw = await prisma.ad.findMany({
+    where: { adGroup: { campaign: { advertiser_id: id } } },
+    include: {
+      adGroup: {
+        include: {
+          campaign: true
+        }
+      },
+      _count: {
+        select: {
+          impressions: true,
+          clicks: {
+            where: { is_valid: 1 }
+          }
+        }
+      }
+    },
+    orderBy: { id: 'desc' }
+  });
 
-  const dailyStats = getDailyStats({ advertiserId: id }) as any[];
-  const placementStats = getPlacementStats(id) as any[];
+  const ads = adsRaw.map(ad => ({
+    ...ad,
+    group_name: ad.adGroup.name,
+    max_bid: ad.adGroup.max_bid,
+    target_device: ad.adGroup.target_device,
+    campaign_name: ad.adGroup.campaign.name,
+    campaign_id: ad.adGroup.campaign.id,
+    start_date: ad.adGroup.campaign.start_date,
+    end_date: ad.adGroup.campaign.end_date,
+    campaign_budget: ad.adGroup.campaign.budget,
+    impressions: ad._count.impressions,
+    clicks: ad._count.clicks
+  }));
+
+  const dailyStats = await getDailyStats({ advertiserId: id.toString() }) as any[];
+  const placementStats = await getPlacementStats(id.toString()) as any[];
   const totalImps = dailyStats.reduce((acc, curr) => acc + curr.impressions, 0);
   const totalClicks = dailyStats.reduce((acc, curr) => acc + curr.clicks, 0);
 
@@ -213,9 +241,9 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
 
         {/* Management Tables Section */}
         <div className="space-y-8">
-          <CampaignsTable campaigns={campaigns} advertiserId={id} />
-          <AdGroupsTable adGroups={adGroups} campaigns={campaigns} advertiserId={id} />
-          <AdsPerformanceTable ads={ads} adGroups={adGroups} advertiserId={id} />
+          <CampaignsTable campaigns={campaigns} advertiserId={id.toString()} />
+          <AdGroupsTable adGroups={adGroups} campaigns={campaigns} advertiserId={id.toString()} />
+          <AdsPerformanceTable ads={ads} adGroups={adGroups} advertiserId={id.toString()} />
         </div>
       </div>
     </div>

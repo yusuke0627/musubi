@@ -1,6 +1,6 @@
 "use server";
 
-import db from "@/lib/db";
+import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
@@ -53,8 +53,15 @@ export async function createCampaign(formData: FormData) {
   const { advertiser_id, name, budget, start_date, end_date } = parsed.data;
   await checkAuth(advertiser_id);
 
-  db.prepare('INSERT INTO campaigns (advertiser_id, name, budget, start_date, end_date) VALUES (?, ?, ?, ?, ?)')
-    .run(advertiser_id, name, budget, start_date, end_date);
+  await prisma.campaign.create({
+    data: {
+      advertiser_id,
+      name,
+      budget,
+      start_date: start_date ? new Date(start_date) : undefined,
+      end_date: end_date ? new Date(end_date) : null,
+    }
+  });
 
   revalidatePath(`/advertiser/${advertiser_id}`);
 }
@@ -62,7 +69,6 @@ export async function createCampaign(formData: FormData) {
 // アドグループ作成
 export async function createAdGroup(formData: FormData) {
   const data = Object.fromEntries(formData.entries());
-  // Handle multiple values for target_publishers
   data.target_publishers = formData.getAll("target_publishers") as any;
   const parsed = AdGroupSchema.safeParse(data);
 
@@ -76,21 +82,30 @@ export async function createAdGroup(formData: FormData) {
 
   const isAll = target_publishers.includes('all') || target_publishers.length === 0;
 
-  db.transaction(() => {
-    const result = db.prepare('INSERT INTO ad_groups (campaign_id, name, max_bid, target_device, is_all_publishers) VALUES (?, ?, ?, ?, ?)')
-      .run(campaign_id, name, max_bid, target_device, isAll ? 1 : 0);
-    
-    const adGroupId = result.lastInsertRowid;
+  await prisma.$transaction(async (tx) => {
+    const adGroup = await tx.adGroup.create({
+      data: {
+        campaign_id,
+        name,
+        max_bid,
+        target_device,
+        is_all_publishers: isAll ? 1 : 0,
+      }
+    });
 
     if (!isAll) {
-      const insertTarget = db.prepare('INSERT INTO ad_group_target_publishers (ad_group_id, publisher_id) VALUES (?, ?)');
-      target_publishers.forEach(pubId => {
+      for (const pubId of target_publishers) {
         if (pubId !== 'all') {
-          insertTarget.run(adGroupId, parseInt(pubId, 10));
+          await tx.adGroupTargetPublisher.create({
+            data: {
+              ad_group_id: adGroup.id,
+              publisher_id: parseInt(pubId, 10),
+            }
+          });
         }
-      });
+      }
     }
-  })();
+  });
 
   revalidatePath(`/advertiser/${advertiser_id}`);
 }
@@ -108,8 +123,16 @@ export async function createAd(formData: FormData) {
   const { advertiser_id, ad_group_id, title, description, image_url, target_url } = parsed.data;
   await checkAuth(advertiser_id);
 
-  db.prepare('INSERT INTO ads (ad_group_id, title, description, image_url, target_url, status) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(ad_group_id, title, description, image_url, target_url, 'pending');
+  await prisma.ad.create({
+    data: {
+      ad_group_id,
+      title,
+      description,
+      image_url,
+      target_url,
+      status: 'pending',
+    }
+  });
 
   revalidatePath(`/advertiser/${advertiser_id}`);
 }
@@ -130,8 +153,15 @@ export async function updateCampaign(formData: FormData) {
   const { advertiser_id, name, budget, start_date, end_date } = parsed.data;
   await checkAuth(advertiser_id);
 
-  db.prepare('UPDATE campaigns SET name = ?, budget = ?, start_date = ?, end_date = ? WHERE id = ?')
-    .run(name, budget, start_date, end_date, id);
+  await prisma.campaign.update({
+    where: { id },
+    data: {
+      name,
+      budget,
+      start_date: start_date ? new Date(start_date) : undefined,
+      end_date: end_date ? new Date(end_date) : null,
+    }
+  });
 
   revalidatePath(`/advertiser/${advertiser_id}`);
 }
@@ -155,22 +185,35 @@ export async function updateAdGroup(formData: FormData) {
 
   const isAll = target_publishers.includes('all') || target_publishers.length === 0;
 
-  db.transaction(() => {
-    db.prepare('UPDATE ad_groups SET campaign_id = ?, name = ?, max_bid = ?, target_device = ?, is_all_publishers = ? WHERE id = ?')
-      .run(campaign_id, name, max_bid, target_device, isAll ? 1 : 0, id);
+  await prisma.$transaction(async (tx) => {
+    await tx.adGroup.update({
+      where: { id },
+      data: {
+        campaign_id,
+        name,
+        max_bid,
+        target_device,
+        is_all_publishers: isAll ? 1 : 0,
+      }
+    });
 
-    // 既存のターゲット設定を削除して再登録
-    db.prepare('DELETE FROM ad_group_target_publishers WHERE ad_group_id = ?').run(id);
+    await tx.adGroupTargetPublisher.deleteMany({
+      where: { ad_group_id: id }
+    });
     
     if (!isAll) {
-      const insertTarget = db.prepare('INSERT INTO ad_group_target_publishers (ad_group_id, publisher_id) VALUES (?, ?)');
-      target_publishers.forEach(pubId => {
+      for (const pubId of target_publishers) {
         if (pubId !== 'all') {
-          insertTarget.run(id, parseInt(pubId, 10));
+          await tx.adGroupTargetPublisher.create({
+            data: {
+              ad_group_id: id,
+              publisher_id: parseInt(pubId, 10),
+            }
+          });
         }
-      });
+      }
     }
-  })();
+  });
 
   revalidatePath(`/advertiser/${advertiser_id}`);
 }
@@ -191,10 +234,12 @@ export async function updateAd(formData: FormData) {
   const { advertiser_id, ad_group_id, title, description, image_url, target_url } = parsed.data;
   await checkAuth(advertiser_id);
 
-  // 現在のデータを取得して変更があるか確認
-  const current = db.prepare('SELECT * FROM ads WHERE id = ?').get(id) as any;
+  const current = await prisma.ad.findUnique({
+    where: { id }
+  });
+
+  if (!current) throw new Error("Ad not found");
   
-  // 広告審査の再トリガー判定
   const isCreativeChanged = 
     current.title !== title || 
     current.description !== description || 
@@ -203,8 +248,17 @@ export async function updateAd(formData: FormData) {
 
   const newStatus = isCreativeChanged ? 'pending' : current.status;
 
-  db.prepare('UPDATE ads SET ad_group_id = ?, title = ?, description = ?, image_url = ?, target_url = ?, status = ? WHERE id = ?')
-    .run(ad_group_id, title, description, image_url, target_url, newStatus, id);
+  await prisma.ad.update({
+    where: { id },
+    data: {
+      ad_group_id,
+      title,
+      description,
+      image_url,
+      target_url,
+      status: newStatus,
+    }
+  });
 
   revalidatePath(`/advertiser/${advertiser_id}`);
 }

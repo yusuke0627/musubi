@@ -6,10 +6,10 @@ import EditModal from "./EditModal";
 interface AdPerformance {
   id: number;
   title: string;
-  image_url: string;
-  description: string;
+  image_url: string | null;
+  description: string | null;
   status: string;
-  rejection_reason?: string;
+  rejection_reason?: string | null;
   impressions: number;
   clicks: number;
   campaign_id: number;
@@ -19,8 +19,8 @@ interface AdPerformance {
   target_device: string;
   campaign_name: string;
   campaign_budget: number;
-  start_date: string;
-  end_date?: string;
+  start_date: string | Date;
+  end_date?: string | Date | null;
   target_url: string;
 }
 
@@ -131,7 +131,7 @@ export default function AdsPerformanceTable({ ads, adGroups, advertiserId }: Ads
               <tr key={ad.id} className="hover:bg-gray-50 transition-colors text-sm">
                 <td className="px-6 py-4 sticky left-0 bg-white z-10 border-r border-gray-100 group">
                   <div className="flex items-center min-w-[200px]">
-                    <img src={ad.image_url} className="w-12 h-10 object-cover rounded border border-gray-100 mr-3 shadow-sm" alt="" />
+                    <img src={ad.image_url || ''} className="w-12 h-10 object-cover rounded border border-gray-100 mr-3 shadow-sm" alt="" />
                     <div>
                       <div className="text-sm font-bold text-gray-900 leading-none mb-1">{ad.title}</div>
                       <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">ID: {ad.id}</div>
@@ -146,7 +146,7 @@ export default function AdsPerformanceTable({ ads, adGroups, advertiserId }: Ads
                     {ad.status.toUpperCase()}
                   </span>
                   {ad.status === 'rejected' && (
-                    <div className="text-[10px] text-red-500 mt-1 max-w-[150px] truncate font-medium italic" title={ad.rejection_reason}>
+                    <div className="text-[10px] text-red-500 mt-1 max-w-[150px] truncate font-medium italic" title={ad.rejection_reason || ''}>
                       {ad.rejection_reason}
                     </div>
                   )}
