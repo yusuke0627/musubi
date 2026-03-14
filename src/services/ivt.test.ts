@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import Database from 'better-sqlite3';
+import prisma from '../lib/db';
 import { isBotUserAgent, isRateLimited, isDuplicate } from './ivt';
-import { initSchema } from '../lib/db';
+import { clearDatabase } from '../lib/test-utils';
 
 describe('IVT Service (Invalid Traffic Detection)', () => {
   describe('isBotUserAgent', () => {
@@ -23,104 +23,118 @@ describe('IVT Service (Invalid Traffic Detection)', () => {
   });
 
   describe('Database checks', () => {
-    let db: Database.Database;
-
-    beforeEach(() => {
-      db = new Database(':memory:');
-      initSchema(db);
+    beforeEach(async () => {
+      await clearDatabase();
       
       // Setup some basic dependent data
-      db.prepare("INSERT INTO advertisers (id, name) VALUES (1, 'Adv')").run();
-      db.prepare("INSERT INTO campaigns (id, advertiser_id, name) VALUES (1, 1, 'Camp')").run();
-      db.prepare("INSERT INTO ad_groups (id, campaign_id, name) VALUES (1, 1, 'Group')").run();
-      db.prepare("INSERT INTO ads (id, ad_group_id, title, target_url) VALUES (1, 1, 'Ad 1', 'http://example.com')").run();
-      db.prepare("INSERT INTO publishers (id, name, domain) VALUES (1, 'Pub', 'example.com')").run();
+      await prisma.advertiser.create({ data: { id: 1, name: 'Adv' } });
+      await prisma.publisher.create({ data: { id: 1, name: 'Pub', domain: 'example.com' } });
+      await prisma.campaign.create({ data: { id: 1, advertiser_id: 1, name: 'Camp' } });
+      await prisma.adGroup.create({ data: { id: 1, campaign_id: 1, name: 'Group' } });
+      await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Ad 1', target_url: 'http://example.com' } });
+      // Create ad 2 for duplicate test
+      await prisma.ad.create({ data: { id: 2, ad_group_id: 1, title: 'Ad 2', target_url: 'http://example2.com' } });
     });
 
     describe('isDuplicate', () => {
-      it('should detect a duplicate click within 10 seconds', () => {
+      it('should detect a duplicate click within 10 seconds', async () => {
         // Insert an initial valid click
-        db.prepare(`
-          INSERT INTO clicks (id, ad_id, publisher_id, ip_address, is_valid, created_at)
-          VALUES (1, 1, 1, '192.168.1.1', 1, '2026-03-12 10:00:00')
-        `).run();
+        await prisma.click.create({
+          data: {
+            ad_id: 1,
+            publisher_id: 1,
+            ip_address: '192.168.1.1',
+            is_valid: 1,
+            created_at: new Date('2026-03-12T10:00:00Z')
+          }
+        });
 
         // Check a new click occurring 5 seconds later
-        const isDup = isDuplicate(db, 1, '192.168.1.1', 2, '2026-03-12 10:00:05');
+        const isDup = await isDuplicate(prisma, 1, '192.168.1.1', 999, new Date('2026-03-12T10:00:05Z'));
         expect(isDup).toBe(true);
       });
 
-      it('should not detect duplicate if more than 10 seconds have passed', () => {
-        db.prepare(`
-          INSERT INTO clicks (id, ad_id, publisher_id, ip_address, is_valid, created_at)
-          VALUES (1, 1, 1, '192.168.1.1', 1, '2026-03-12 10:00:00')
-        `).run();
+      it('should not detect duplicate if more than 10 seconds have passed', async () => {
+        await prisma.click.create({
+          data: {
+            ad_id: 1,
+            publisher_id: 1,
+            ip_address: '192.168.1.1',
+            is_valid: 1,
+            created_at: new Date('2026-03-12T10:00:00Z')
+          }
+        });
 
-        // Check a new click occurring 11 seconds later
-        const isDup = isDuplicate(db, 1, '192.168.1.1', 2, '2026-03-12 10:00:11');
+        const isDup = await isDuplicate(prisma, 1, '192.168.1.1', 999, new Date('2026-03-12T10:00:11Z'));
         expect(isDup).toBe(false);
       });
 
-      it('should not detect duplicate for different ad', () => {
-        db.prepare(`
-          INSERT INTO clicks (id, ad_id, publisher_id, ip_address, is_valid, created_at)
-          VALUES (1, 1, 1, '192.168.1.1', 1, '2026-03-12 10:00:00')
-        `).run();
+      it('should not detect duplicate for different ad', async () => {
+        await prisma.click.create({
+          data: {
+            ad_id: 1,
+            publisher_id: 1,
+            ip_address: '192.168.1.1',
+            is_valid: 1,
+            created_at: new Date('2026-03-12T10:00:00Z')
+          }
+        });
 
-        // Check a new click for a different ad_id
-        const isDup = isDuplicate(db, 2, '192.168.1.1', 2, '2026-03-12 10:00:05');
+        // Check for ad_id 2
+        const isDup = await isDuplicate(prisma, 2, '192.168.1.1', 999, new Date('2026-03-12T10:00:05Z'));
         expect(isDup).toBe(false);
       });
     });
 
     describe('isRateLimited', () => {
-      it('should flag as rate limited if IP has >= 50 clicks in the last hour', () => {
-        const insertClick = db.prepare(`
-          INSERT INTO clicks (ad_id, publisher_id, ip_address, is_valid, created_at)
-          VALUES (1, 1, '10.0.0.1', 1, ?)
-        `);
-
-        // Insert 50 clicks spanning the last hour
+      it('should flag as rate limited if IP has >= 50 clicks in the last hour', async () => {
         for (let i = 0; i < 50; i++) {
-          // Spread clicks evenly across 60 minutes
-          const min = Math.floor((i / 50) * 60);
-          const time = `2026-03-12 10:${min.toString().padStart(2, '0')}:00`;
-          insertClick.run(time);
+          await prisma.click.create({
+            data: {
+              ad_id: 1,
+              publisher_id: 1,
+              ip_address: '10.0.0.1',
+              is_valid: 1,
+              created_at: new Date('2026-03-12T10:30:00Z')
+            }
+          });
         }
 
-        // Get the latest ID assigned (which will be 50)
-        // Check for click ID 51 at the end of the hour
-        const isLimited = isRateLimited(db, '10.0.0.1', 51, '2026-03-12 10:59:59');
+        const isLimited = await isRateLimited(prisma, '10.0.0.1', 999, new Date('2026-03-12T10:59:59Z'));
         expect(isLimited).toBe(true);
       });
 
-      it('should not flag if IP has < 50 clicks in the last hour', () => {
-        const insertClick = db.prepare(`
-          INSERT INTO clicks (ad_id, publisher_id, ip_address, is_valid, created_at)
-          VALUES (1, 1, '10.0.0.1', 1, ?)
-        `);
-
-        // Insert 49 clicks
+      it('should not flag if IP has < 50 clicks in the last hour', async () => {
         for (let i = 0; i < 49; i++) {
-          insertClick.run('2026-03-12 10:30:00');
+          await prisma.click.create({
+            data: {
+              ad_id: 1,
+              publisher_id: 1,
+              ip_address: '10.0.0.1',
+              is_valid: 1,
+              created_at: new Date('2026-03-12T10:30:00Z')
+            }
+          });
         }
 
-        const isLimited = isRateLimited(db, '10.0.0.1', 50, '2026-03-12 10:59:59');
+        const isLimited = await isRateLimited(prisma, '10.0.0.1', 999, new Date('2026-03-12T10:59:59Z'));
         expect(isLimited).toBe(false);
       });
       
-      it('should not count clicks older than 1 hour', () => {
-        const insertClick = db.prepare(`
-          INSERT INTO clicks (ad_id, publisher_id, ip_address, is_valid, created_at)
-          VALUES (1, 1, '10.0.0.1', 1, ?)
-        `);
-
-        // Insert 50 clicks from yesterday (well past 1 hour)
+      it('should not count clicks older than 1 hour', async () => {
         for (let i = 0; i < 50; i++) {
-          insertClick.run('2026-03-11 10:00:00');
+          await prisma.click.create({
+            data: {
+              ad_id: 1,
+              publisher_id: 1,
+              ip_address: '10.0.0.1',
+              is_valid: 1,
+              created_at: new Date('2026-03-11T10:00:00Z')
+            }
+          });
         }
 
-        const isLimited = isRateLimited(db, '10.0.0.1', 51, '2026-03-12 10:00:00');
+        const isLimited = await isRateLimited(prisma, '10.0.0.1', 999, new Date('2026-03-12T10:00:00Z'));
         expect(isLimited).toBe(false);
       });
     });

@@ -1,28 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import prisma from "@/lib/db";
+import { Prisma } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const publisherId = searchParams.get("publisher_id");
+  const publisherIdParam = searchParams.get("publisher_id");
   
-  if (!publisherId) {
+  if (!publisherIdParam) {
     return new NextResponse("publisher_id is required", { status: 400 });
   }
 
+  const publisherId = parseInt(publisherIdParam, 10);
   const ua = req.headers.get("user-agent") || "";
   const ip = req.headers.get("x-forwarded-for") || "unknown";
   
   // 簡易デバイス判定
-  const isMobile = /Mobi|Android/i.test(ua);
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
   const currentDevice = isMobile ? 'mobile' : 'desktop';
 
-  // 現在の時刻、曜日、時間を取得 (JST想定だがシステム時刻に依存)
+  // 現在の時刻、曜日、時間を取得
   const now = new Date();
   const dayOfWeek = now.getDay();
   const hour = now.getHours();
 
   // RTB版：期待収益（eCPM）に基づき、最も収益性が高い承認済み広告を1件取得
-  const ad = db.prepare(`
+  const ads = await prisma.$queryRaw<any[]>(Prisma.sql`
     WITH ad_stats AS (
       SELECT 
         ads.id,
@@ -37,27 +39,27 @@ export async function GET(req: NextRequest) {
         AND advertisers.balance >= ad_groups.max_bid
         -- キャンペーン予算チェック
         AND campaigns.spent < campaigns.budget
-        AND (ad_groups.target_device = 'all' OR ad_groups.target_device = ?)
+        AND (ad_groups.target_device = 'all' OR ad_groups.target_device = ${currentDevice})
         -- 配信先チェック (is_all_publishers または 中間テーブルに存在するか)
         AND (
           ad_groups.is_all_publishers = 1
           OR EXISTS (
             SELECT 1 FROM ad_group_target_publishers 
-            WHERE ad_group_id = ad_groups.id AND publisher_id = ?
+            WHERE ad_group_id = ad_groups.id AND publisher_id = ${publisherId}
           )
         )
-        -- 期間チェック (SQLiteの datetime('now') を使用)
-        AND (campaigns.start_date IS NULL OR campaigns.start_date <= datetime('now'))
-        AND (campaigns.end_date IS NULL OR campaigns.end_date >= datetime('now'))
+        -- 期間チェック
+        AND (campaigns.start_date IS NULL OR campaigns.start_date <= ${now})
+        AND (campaigns.end_date IS NULL OR campaigns.end_date >= ${now})
         -- スケジュールチェック
         AND (
           NOT EXISTS (SELECT 1 FROM ad_schedules WHERE ad_group_id = ad_groups.id)
           OR EXISTS (
             SELECT 1 FROM ad_schedules 
             WHERE ad_group_id = ad_groups.id 
-              AND day_of_week = ? 
-              AND start_hour <= ? 
-              AND end_hour >= ?
+              AND day_of_week = ${dayOfWeek} 
+              AND start_hour <= ${hour} 
+              AND end_hour >= ${hour}
           )
         )
     )
@@ -71,21 +73,34 @@ export async function GET(req: NextRequest) {
     JOIN ad_stats s ON ads.id = s.id
     ORDER BY score DESC, ads.id DESC
     LIMIT 1
-  `).get(currentDevice, publisherId, dayOfWeek, hour, hour) as any;
+  `);
+
+  const ad = ads[0];
 
   if (!ad) {
     return new NextResponse(null, { status: 204 });
   }
 
   // インプレッションを記録
-  db.prepare('INSERT INTO impressions (ad_id, publisher_id, user_agent, ip_address) VALUES (?, ?, ?, ?)')
-    .run(ad.id, publisherId, ua, ip);
+  await prisma.impression.create({
+    data: {
+      ad_id: ad.id,
+      publisher_id: publisherId,
+      user_agent: ua,
+      ip_address: ip,
+    }
+  });
 
   // Reactコンポーネントを使用して安全なHTMLを生成 (自動エスケープによるXSS対策)
   const { renderToStaticMarkup } = await import('react-dom/server');
   const AdCreative = (await import('@/components/AdCreative')).default;
   
-  const clickUrl = `${new URL(req.url).origin}/api/click?ad_id=${ad.id}&publisher_id=${publisherId}`;
+  // Safe URL building
+  const clickUrlObj = new URL(`${new URL(req.url).origin}/api/click`);
+  clickUrlObj.searchParams.set("ad_id", ad.id.toString());
+  clickUrlObj.searchParams.set("publisher_id", publisherId.toString());
+  const clickUrl = clickUrlObj.toString();
+
   const adHtml = renderToStaticMarkup(
     <AdCreative ad={ad} clickUrl={clickUrl} />
   );

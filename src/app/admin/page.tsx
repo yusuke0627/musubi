@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import prisma from "@/lib/db";
 import { getDailyStats } from "@/services/stats";
 import Link from "next/link";
 import StatsChart from "@/components/StatsChart";
@@ -13,38 +13,77 @@ export default async function AdminDashboard() {
   if (session?.user?.role !== 'admin') {
     return forbidden();
   }
-  const stats = db.prepare(`
-    SELECT 
-      (SELECT COUNT(*) FROM impressions) as total_impressions,
-      (SELECT COUNT(*) FROM clicks WHERE is_valid = 1) as total_clicks
-  `).get() as any;
 
-  const advertisers = db.prepare('SELECT * FROM advertisers').all() as any[];
-  const publishers = db.prepare('SELECT * FROM publishers').all() as any[];
+  // Global Stats
+  const totalImpressions = await prisma.impression.count();
+  const totalClicks = await prisma.click.count({ where: { is_valid: 1 } });
+
+  const advertisers = await prisma.advertiser.findMany({
+    orderBy: { name: 'asc' }
+  });
+  const publishers = await prisma.publisher.findMany({
+    orderBy: { name: 'asc' }
+  });
   
-  const ads = db.prepare(`
-    SELECT ads.*, advertisers.name as advertiser_name, ad_groups.max_bid as current_bid,
-    (SELECT COUNT(*) FROM impressions WHERE ad_id = ads.id) as impressions,
-    (SELECT COUNT(*) FROM clicks WHERE ad_id = ads.id AND is_valid = 1) as clicks
-    FROM ads
-    JOIN ad_groups ON ads.ad_group_id = ad_groups.id
-    JOIN campaigns ON ad_groups.campaign_id = campaigns.id
-    JOIN advertisers ON campaigns.advertiser_id = advertisers.id
-    ORDER BY ads.id DESC
-  `).all() as any[];
+  const ads = await prisma.ad.findMany({
+    include: {
+      adGroup: {
+        include: {
+          campaign: {
+            include: {
+              advertiser: true
+            }
+          }
+        }
+      },
+      _count: {
+        select: {
+          impressions: true,
+          clicks: {
+            where: { is_valid: 1 }
+          }
+        }
+      }
+    },
+    orderBy: { id: 'desc' }
+  });
 
-  const dailyStats = getDailyStats() as any[];
+  const dailyStats = await getDailyStats() as any[];
 
   // クリック履歴
-  const pendingClicks = db.prepare('SELECT clicks.*, ads.title as ad_title FROM clicks JOIN ads ON clicks.ad_id = ads.id WHERE processed = 0 ORDER BY created_at DESC').all() as any[];
-  const processedClicks = db.prepare('SELECT clicks.*, ads.title as ad_title FROM clicks JOIN ads ON clicks.ad_id = ads.id WHERE processed = 1 ORDER BY created_at DESC LIMIT 50').all() as any[];
+  const pendingClicks = await prisma.click.findMany({
+    where: { processed: 0 },
+    include: {
+      ad: { select: { title: true } }
+    },
+    orderBy: { created_at: 'desc' }
+  });
 
   // 支払いリクエスト
-  const pendingPayouts = db.prepare('SELECT payouts.*, publishers.name as publisher_name FROM payouts JOIN publishers ON payouts.publisher_id = publishers.id WHERE status = \'pending\' ORDER BY created_at ASC').all() as any[];
-  const processedPayouts = db.prepare('SELECT payouts.*, publishers.name as publisher_name FROM payouts JOIN publishers ON payouts.publisher_id = publishers.id WHERE status = \'paid\' ORDER BY paid_at DESC LIMIT 20').all() as any[];
+  const pendingPayouts = await prisma.payout.findMany({
+    where: { status: 'pending' },
+    include: {
+      publisher: { select: { name: true } }
+    },
+    orderBy: { created_at: 'asc' }
+  });
 
   // 審査待ち広告
-  const pendingAds = db.prepare('SELECT ads.*, advertisers.name as advertiser_name FROM ads JOIN ad_groups ON ads.ad_group_id = ad_groups.id JOIN campaigns ON ad_groups.campaign_id = campaigns.id JOIN advertisers ON campaigns.advertiser_id = advertisers.id WHERE ads.status = \'pending\' ORDER BY ads.id ASC').all() as any[];
+  const pendingAds = await prisma.ad.findMany({
+    where: { status: 'pending' },
+    include: {
+      adGroup: {
+        include: {
+          campaign: {
+            include: {
+              advertiser: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: { id: 'asc' }
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -58,16 +97,16 @@ export default async function AdminDashboard() {
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Network Impressions</h3>
-            <div className="text-3xl font-bold text-gray-900">{stats.total_impressions.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-gray-900">{totalImpressions.toLocaleString()}</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Network Clicks</h3>
-            <div className="text-3xl font-bold text-gray-900">{stats.total_clicks.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-gray-900">{totalClicks.toLocaleString()}</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Avg. CTR</h3>
             <div className="text-3xl font-bold text-blue-600">
-              {stats.total_impressions > 0 ? ((stats.total_clicks / stats.total_impressions) * 100).toFixed(2) : '0.00'}%
+              {totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0.00'}%
             </div>
           </div>
         </section>
@@ -81,7 +120,7 @@ export default async function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Click Validation */}
           <section className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[550px]">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-orange-50/30">
+            <div className="p-6 border-b border-gray-100 bg-orange-50/30">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-800 tracking-tight">Click Validation</h2>
                 <form action={async () => {
@@ -120,7 +159,7 @@ export default async function AdminDashboard() {
                   {pendingClicks.map((click) => (
                     <tr key={click.id}>
                       <td className="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">{new Date(click.created_at).toLocaleTimeString()}</td>
-                      <td className="px-4 py-2 text-xs font-bold text-gray-900">{click.ad_title}</td>
+                      <td className="px-4 py-2 text-xs font-bold text-gray-900">{click.ad.title}</td>
                       <td className="px-4 py-2 text-xs font-mono text-gray-400">{click.ip_address}</td>
                     </tr>
                   ))}
@@ -142,11 +181,11 @@ export default async function AdminDashboard() {
                 <div className="divide-y divide-gray-200">
                   {pendingAds.map((ad) => (
                     <div key={ad.id} className="p-6 flex flex-col sm:flex-row gap-6">
-                      <img src={ad.image_url} className="w-32 h-24 object-cover rounded-lg border shadow-sm flex-shrink-0" alt="" />
+                      <img src={ad.image_url || ''} className="w-32 h-24 object-cover rounded-lg border shadow-sm flex-shrink-0" alt="" />
                       <div className="flex-1">
                         <div className="font-bold text-gray-900">{ad.title}</div>
                         <div className="text-sm text-gray-500 mb-2">{ad.description}</div>
-                        <div className="text-xs text-blue-600 mb-4">{ad.advertiser_name}</div>
+                        <div className="text-xs text-blue-600 mb-4">{ad.adGroup.campaign.advertiser.name}</div>
                         <div className="flex flex-wrap gap-2">
                           <form action={reviewAd}>
                             <input type="hidden" name="ad_id" value={ad.id} />
@@ -190,7 +229,7 @@ export default async function AdminDashboard() {
                 {pendingPayouts.map((p) => (
                   <tr key={p.id}>
                     <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{new Date(p.created_at).toLocaleDateString('ja-JP')}</td>
-                    <td className="px-6 py-4 text-sm font-bold text-gray-900">{p.publisher_name}</td>
+                    <td className="px-6 py-4 text-sm font-bold text-gray-900">{p.publisher.name}</td>
                     <td className="px-6 py-4 text-sm font-mono font-bold text-right text-emerald-600 whitespace-nowrap">¥{p.amount.toLocaleString()}</td>
                     <td className="px-6 py-4 text-center">
                       <form action={completePayout}>
@@ -294,10 +333,10 @@ export default async function AdminDashboard() {
                 {ads.map((ad) => (
                   <tr key={ad.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 flex items-center">
-                      <img src={ad.image_url} className="w-10 h-10 object-cover rounded-md border mr-3" alt="" />
+                      <img src={ad.image_url || ''} className="w-10 h-10 object-cover rounded-md border mr-3" alt="" />
                       <div className="text-sm font-bold text-gray-900">{ad.title}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{ad.advertiser_name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{ad.adGroup.campaign.advertiser.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 rounded text-[10px] font-bold ${
                         ad.status === 'approved' ? 'bg-green-100 text-green-800' : 
@@ -306,8 +345,8 @@ export default async function AdminDashboard() {
                         {ad.status.toUpperCase()}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 text-right font-mono">{ad.impressions.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600 text-right font-mono">{ad.clicks.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 text-right font-mono">{ad._count.impressions.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 text-right font-mono">{ad._count.clicks.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

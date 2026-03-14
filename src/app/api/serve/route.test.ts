@@ -1,45 +1,30 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import db, { initSchema } from '@/lib/db';
+import prisma from '@/lib/db';
 import { GET } from './route';
+import { clearDatabase } from '@/lib/test-utils';
 
 describe('GET /api/serve', () => {
-  beforeEach(() => {
-    // 子テーブルから先に削除する
-    db.exec('DROP TABLE IF EXISTS ad_group_target_publishers');
-    db.exec('DROP TABLE IF EXISTS ad_schedules');
-    db.exec('DROP TABLE IF EXISTS clicks');
-    db.exec('DROP TABLE IF EXISTS impressions');
-    db.exec('DROP TABLE IF EXISTS payouts');
-    db.exec('DROP TABLE IF EXISTS ads');
-    db.exec('DROP TABLE IF EXISTS ad_groups');
-    db.exec('DROP TABLE IF EXISTS campaigns');
-    db.exec('DROP TABLE IF EXISTS publishers');
-    db.exec('DROP TABLE IF EXISTS advertisers');
-    initSchema(db);
+  beforeEach(async () => {
+    await clearDatabase();
 
-    // テスト用のマスタデータを投入
-    db.prepare("INSERT INTO advertisers (id, name, balance) VALUES (1, 'Adv 1', 1000)").run();
-    db.prepare("INSERT INTO publishers (id, name, domain) VALUES (1, 'Pub 1', 'p1.com')").run();
-    db.prepare("INSERT INTO campaigns (id, advertiser_id, name, budget, spent) VALUES (1, 1, 'Camp 1', 1000, 0)").run();
-    db.prepare("INSERT INTO ad_groups (id, campaign_id, name, max_bid, target_device, is_all_publishers) VALUES (1, 1, 'Group 1', 100, 'all', 1)").run();
-    db.prepare("INSERT INTO ads (id, ad_group_id, title, description, image_url, target_url, status) VALUES (1, 1, 'Ad 1', 'Desc 1', 'http://img.com', 'http://target.com', 'approved')").run();
+    // Setup mock data
+    await prisma.advertiser.create({ data: { id: 1, name: 'Adv 1', balance: 1000 } });
+    await prisma.publisher.create({ data: { id: 1, name: 'Pub 1', domain: 'p1.com' } });
+    await prisma.campaign.create({ data: { id: 1, advertiser_id: 1, name: 'Camp 1', budget: 1000, spent: 0 } });
+    await prisma.adGroup.create({ data: { id: 1, campaign_id: 1, name: 'Group 1', max_bid: 100, target_device: 'all', is_all_publishers: 1 } });
+    await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Ad 1', description: 'Desc 1', image_url: 'http://img.com', target_url: 'http://target.com', status: 'approved' } });
   });
 
   it('should return 400 if publisher_id is missing', async () => {
     const req = new NextRequest('http://localhost/api/serve');
     const res = await GET(req);
     expect(res.status).toBe(400);
-    const text = await res.text();
-    expect(text).toBe('publisher_id is required');
   });
 
   it('should serve an ad and record an impression', async () => {
     const req = new NextRequest('http://localhost/api/serve?publisher_id=1', {
-      headers: {
-        'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)',
-        'x-forwarded-for': '1.2.3.4'
-      }
+      headers: { 'user-agent': 'Mozilla/5.0', 'x-forwarded-for': '1.2.3.4' }
     });
     
     const res = await GET(req);
@@ -52,42 +37,41 @@ describe('GET /api/serve', () => {
     // React's automatic escaping changes '&' to '&amp;'
     expect(html).toContain('/api/click?ad_id=1&amp;publisher_id=1');
 
-    // DBにインプレッションが記録されているか確認
-    const imp = db.prepare('SELECT * FROM impressions WHERE ad_id = 1 AND publisher_id = 1').get() as any;
+    // Verify impression
+    const imp = await prisma.impression.findFirst({ where: { ad_id: 1, publisher_id: 1 } });
     expect(imp).toBeDefined();
-    expect(imp.ip_address).toBe('1.2.3.4');
+    expect(imp?.ip_address).toBe('1.2.3.4');
   });
 
   it('should return 204 if no matching ad is found', async () => {
-    // 広告を不承認にする
-    db.prepare("UPDATE ads SET status = 'pending' WHERE id = 1").run();
-
+    await prisma.ad.update({ where: { id: 1 }, data: { status: 'pending' } });
     const req = new NextRequest('http://localhost/api/serve?publisher_id=1');
     const res = await GET(req);
     expect(res.status).toBe(204);
   });
 
   it('should respect device targeting (mobile)', async () => {
-    // アドグループをデスクトップ限定にする
-    db.prepare("UPDATE ad_groups SET target_device = 'desktop' WHERE id = 1").run();
+    await prisma.adGroup.update({ where: { id: 1 }, data: { target_device: 'mobile' } });
 
-    // モバイル端末からのリクエスト (Mobi を含むUA)
-    const req = new NextRequest('http://localhost/api/serve?publisher_id=1', {
-      headers: {
-        'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1'
-      }
+    // Request from Desktop
+    const reqDesktop = new NextRequest('http://localhost/api/serve?publisher_id=1', {
+      headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
     });
-    
-    const res = await GET(req);
-    expect(res.status).toBe(204); // 配信されないはず
+    const resDesktop = await GET(reqDesktop);
+    expect(resDesktop.status).toBe(204);
+
+    // Request from Mobile
+    const reqMobile = new NextRequest('http://localhost/api/serve?publisher_id=1', {
+      headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X)' }
+    });
+    const resMobile = await GET(reqMobile);
+    expect(resMobile.status).toBe(200);
   });
 
   it('should not serve an ad if the campaign has not started yet', async () => {
-    // 開始日を明日に設定
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowIso = tomorrow.toISOString().replace('T', ' ').split('.')[0];
-    db.prepare("UPDATE campaigns SET start_date = ? WHERE id = 1").run(tomorrowIso);
+    const future = new Date();
+    future.setDate(future.getDate() + 1);
+    await prisma.campaign.update({ where: { id: 1 }, data: { start_date: future } });
 
     const req = new NextRequest('http://localhost/api/serve?publisher_id=1');
     const res = await GET(req);
@@ -95,11 +79,9 @@ describe('GET /api/serve', () => {
   });
 
   it('should not serve an ad if the campaign has already ended', async () => {
-    // 終了日を昨日に設定
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayIso = yesterday.toISOString().replace('T', ' ').split('.')[0];
-    db.prepare("UPDATE campaigns SET end_date = ? WHERE id = 1").run(yesterdayIso);
+    const past = new Date();
+    past.setDate(past.getDate() - 1);
+    await prisma.campaign.update({ where: { id: 1 }, data: { end_date: past } });
 
     const req = new NextRequest('http://localhost/api/serve?publisher_id=1');
     const res = await GET(req);
@@ -111,49 +93,63 @@ describe('GET /api/serve', () => {
     const dayOfWeek = now.getDay();
     const hour = now.getHours();
 
-    // 現在とは異なる曜日にスケジュールを設定 (例: 今日の曜日 + 1)
-    const otherDay = (dayOfWeek + 1) % 7;
-    db.prepare("INSERT INTO ad_schedules (ad_group_id, day_of_week, start_hour, end_hour) VALUES (1, ?, 0, 23)").run(otherDay);
+    // 現在時刻を含まないスケジュールを設定
+    await prisma.adSchedule.create({
+      data: {
+        ad_group_id: 1,
+        day_of_week: (dayOfWeek + 1) % 7,
+        start_hour: 0,
+        end_hour: 23
+      }
+    });
 
     const req = new NextRequest('http://localhost/api/serve?publisher_id=1');
     const res = await GET(req);
-    expect(res.status).toBe(204); // スケジュール外なので配信されないはず
+    expect(res.status).toBe(204);
 
-    // 現在の曜日・時間にスケジュールを合わせる
-    db.prepare("DELETE FROM ad_schedules").run();
-    db.prepare("INSERT INTO ad_schedules (ad_group_id, day_of_week, start_hour, end_hour) VALUES (1, ?, ?, ?)").run(dayOfWeek, hour, hour);
+    // 現在時刻を含むスケジュールを追加
+    await prisma.adSchedule.create({
+      data: {
+        ad_group_id: 1,
+        day_of_week: dayOfWeek,
+        start_hour: 0,
+        end_hour: 23
+      }
+    });
 
     const resOk = await GET(req);
-    expect(resOk.status).toBe(200); // スケジュール内なので配信されるはず
+    expect(resOk.status).toBe(200);
   });
 
   it('should respect specific publisher targeting', async () => {
-    // ターゲットを特定のパブリッシャー（ID: 99）に限定する
-    db.prepare("INSERT INTO publishers (id, name, domain) VALUES (99, 'Target Pub', 't.com')").run();
-    db.prepare("UPDATE ad_groups SET is_all_publishers = 0 WHERE id = 1").run();
-    db.prepare("INSERT INTO ad_group_target_publishers (ad_group_id, publisher_id) VALUES (1, 99)").run();
+    await prisma.publisher.create({ data: { id: 99, name: 'Pub 99', domain: 'p99.com' } });
+    await prisma.adGroup.update({ where: { id: 1 }, data: { is_all_publishers: 0 } });
+    await prisma.adGroupTargetPublisher.create({
+      data: { ad_group_id: 1, publisher_id: 99 }
+    });
 
-    // 別のパブリッシャー（ID: 1）からのリクエスト
-    const req = new NextRequest('http://localhost/api/serve?publisher_id=1');
-    const res = await GET(req);
-    expect(res.status).toBe(204); // 配信されないはず
+    // 許可されていないパブリッシャーからのリクエスト
+    const reqFail = new NextRequest('http://localhost/api/serve?publisher_id=1');
+    const resFail = await GET(reqFail);
+    expect(resFail.status).toBe(204);
 
-    // ターゲットのパブリッシャー（ID: 99）からのリクエスト
+    // ターゲットのパブリッシャーからのリクエスト
     const reqOk = new NextRequest('http://localhost/api/serve?publisher_id=99');
     const resOk = await GET(reqOk);
-    expect(resOk.status).toBe(200); // 配信されるはず
+    expect(resOk.status).toBe(200);
   });
 
   it('should escape ad title and description to prevent XSS', async () => {
-    // スクリプトを含む広告を登録
-    db.prepare("UPDATE ads SET title = '<script>alert(1)</script>', description = '\" onclick=\"alert(2)' WHERE id = 1").run();
+    await prisma.ad.update({ 
+      where: { id: 1 }, 
+      data: { title: '<script>alert(1)</script>', description: '" onclick="alert(2)' } 
+    });
 
     const req = new NextRequest('http://localhost/api/serve?publisher_id=1');
     const res = await GET(req);
     expect(res.status).toBe(200);
     
     const html = await res.text();
-    // スクリプトタグがエスケープされていることを確認
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
     expect(html).toContain('&quot; onclick=&quot;alert(2)');

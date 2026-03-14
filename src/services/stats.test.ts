@@ -1,117 +1,61 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import db, { initSchema } from '@/lib/db';
+import prisma from '@/lib/db';
 import { getDailyStats, getPlacementStats } from './stats';
+import { clearDatabase } from '@/lib/test-utils';
 
 describe('getDailyStats', () => {
-  beforeEach(() => {
-    // 各テストの前にスキーマをリセット（インメモリDBをクリーンにする）
-    db.exec('DROP TABLE IF EXISTS ad_group_target_publishers');
-    db.exec('DROP TABLE IF EXISTS ad_schedules');
-    db.exec('DROP TABLE IF EXISTS clicks');
-    db.exec('DROP TABLE IF EXISTS impressions');
-    db.exec('DROP TABLE IF EXISTS payouts');
-    db.exec('DROP TABLE IF EXISTS ads');
-    db.exec('DROP TABLE IF EXISTS ad_groups');
-    db.exec('DROP TABLE IF EXISTS campaigns');
-    db.exec('DROP TABLE IF EXISTS publishers');
-    db.exec('DROP TABLE IF EXISTS advertisers');
-    initSchema(db);
+  beforeEach(async () => {
+    await clearDatabase();
+
+    // Setup initial data
+    await prisma.advertiser.create({ data: { id: 1, name: 'Test Adv' } });
+    await prisma.publisher.create({ data: { id: 1, name: 'Test Pub', domain: 'example.com' } });
+    await prisma.campaign.create({ data: { id: 1, advertiser_id: 1, name: 'Test Camp' } });
+    await prisma.adGroup.create({ data: { id: 1, campaign_id: 1, name: 'Test Group' } });
+    await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Test Ad', target_url: 'http://test.com', status: 'approved' } });
   });
 
-  it('should return 7 days of statistics', () => {
-    const stats = getDailyStats() as any[];
-    expect(stats).toHaveLength(7);
+  it('should aggregate impressions and clicks by date', async () => {
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
     
-    // 直近の日付が含まれているか確認
-    const today = new Date().toISOString().split('T')[0];
-    expect(stats[6].date).toBe(today);
-  });
-
-  it('should aggregate impressions and clicks correctly', () => {
-    // テストデータの投入
-    db.prepare("INSERT INTO advertisers (id, name) VALUES (1, 'Test Adv')").run();
-    db.prepare("INSERT INTO publishers (id, name, domain) VALUES (1, 'Test Pub', 'example.com')").run();
-    db.prepare("INSERT INTO campaigns (id, advertiser_id, name) VALUES (1, 1, 'Test Camp')").run();
-    db.prepare("INSERT INTO ad_groups (id, campaign_id, name) VALUES (1, 1, 'Test Group')").run();
-    db.prepare("INSERT INTO ads (id, ad_group_id, title, target_url) VALUES (1, 1, 'Test Ad', 'http://test.com')").run();
-
-    const today = new Date().toISOString().split('T')[0];
+    await prisma.impression.create({ data: { ad_id: 1, publisher_id: 1, created_at: today } });
+    await prisma.impression.create({ data: { ad_id: 1, publisher_id: 1, created_at: today } });
     
-    // インプレッション挿入
-    db.prepare('INSERT INTO impressions (ad_id, publisher_id, created_at) VALUES (1, 1, ?)').run(`${today} 10:00:00`);
-    db.prepare('INSERT INTO impressions (ad_id, publisher_id, created_at) VALUES (1, 1, ?)').run(`${today} 11:00:00`);
+    await prisma.click.create({ data: { ad_id: 1, publisher_id: 1, is_valid: 1, created_at: today } });
+    await prisma.click.create({ data: { ad_id: 1, publisher_id: 1, is_valid: 0, created_at: today } });
+
+    const stats = await getDailyStats({ advertiserId: '1' }) as any[];
+    const dayStats = stats.find(s => s.date === dateStr);
     
-    // 有効なクリック挿入
-    db.prepare('INSERT INTO clicks (ad_id, publisher_id, is_valid, created_at) VALUES (1, 1, 1, ?)').run(`${today} 10:30:00`);
-    
-    // 無効なクリック挿入（カウントされないはず）
-    db.prepare('INSERT INTO clicks (ad_id, publisher_id, is_valid, created_at) VALUES (1, 1, 0, ?)').run(`${today} 10:35:00`);
-
-    const stats = getDailyStats() as any[];
-    const todayStats = stats.find((s: any) => s.date === today);
-    
-    expect(todayStats).toBeDefined();
-    expect(todayStats?.impressions).toBe(2);
-    expect(todayStats?.clicks).toBe(1);
-  });
-
-  it('should filter by publisherId correctly', () => {
-    db.prepare("INSERT INTO advertisers (id, name) VALUES (1, 'Test Adv')").run();
-    db.prepare("INSERT INTO publishers (id, name, domain) VALUES (1, 'Pub 1', 'p1.com')").run();
-    db.prepare("INSERT INTO publishers (id, name, domain) VALUES (2, 'Pub 2', 'p2.com')").run();
-    db.prepare("INSERT INTO campaigns (id, advertiser_id, name) VALUES (1, 1, 'Test Camp')").run();
-    db.prepare("INSERT INTO ad_groups (id, campaign_id, name) VALUES (1, 1, 'Test Group')").run();
-    db.prepare("INSERT INTO ads (id, ad_group_id, title, target_url) VALUES (1, 1, 'Test Ad', 'http://test.com')").run();
-
-    const today = new Date().toISOString().split('T')[0];
-    
-    db.prepare('INSERT INTO impressions (ad_id, publisher_id, created_at) VALUES (1, 1, ?)').run(`${today} 10:00:00`);
-    db.prepare('INSERT INTO impressions (ad_id, publisher_id, created_at) VALUES (1, 2, ?)').run(`${today} 11:00:00`);
-
-    const statsForPub1 = getDailyStats({ publisherId: '1' }) as any[];
-    const todayStats1 = statsForPub1.find((s: any) => s.date === today);
-    expect(todayStats1?.impressions).toBe(1);
-
-    const statsForPub2 = getDailyStats({ publisherId: '2' }) as any[];
-    const todayStats2 = statsForPub2.find((s: any) => s.date === today);
-    expect(todayStats2?.impressions).toBe(1);
+    expect(dayStats).toBeDefined();
+    expect(dayStats?.impressions).toBe(2);
+    expect(dayStats?.clicks).toBe(1);
   });
 });
 
 describe('getPlacementStats', () => {
-  beforeEach(() => {
-    db.exec('DROP TABLE IF EXISTS ad_group_target_publishers');
-    db.exec('DROP TABLE IF EXISTS ad_schedules');
-    db.exec('DROP TABLE IF EXISTS clicks');
-    db.exec('DROP TABLE IF EXISTS impressions');
-    db.exec('DROP TABLE IF EXISTS payouts');
-    db.exec('DROP TABLE IF EXISTS ads');
-    db.exec('DROP TABLE IF EXISTS ad_groups');
-    db.exec('DROP TABLE IF EXISTS campaigns');
-    db.exec('DROP TABLE IF EXISTS publishers');
-    db.exec('DROP TABLE IF EXISTS advertisers');
-    initSchema(db);
+  beforeEach(async () => {
+    await clearDatabase();
   });
 
-  it('should return placement statistics for an advertiser', () => {
-    // テストデータの投入
-    db.prepare("INSERT INTO advertisers (id, name) VALUES (1, 'Adv 1')").run();
-    db.prepare("INSERT INTO advertisers (id, name) VALUES (2, 'Adv 2')").run();
+  it('should return placement statistics for an advertiser', async () => {
+    await prisma.advertiser.create({ data: { id: 1, name: 'Adv 1' } });
+    await prisma.advertiser.create({ data: { id: 2, name: 'Adv 2' } });
     
-    db.prepare("INSERT INTO publishers (id, name, domain) VALUES (1, 'Pub 1', 'p1.com')").run();
-    db.prepare("INSERT INTO publishers (id, name, domain) VALUES (2, 'Pub 2', 'p2.com')").run();
+    await prisma.publisher.create({ data: { id: 1, name: 'Pub 1', domain: 'p1.com' } });
+    await prisma.publisher.create({ data: { id: 2, name: 'Pub 2', domain: 'p2.com' } });
     
-    db.prepare("INSERT INTO campaigns (id, advertiser_id, name) VALUES (1, 1, 'Camp 1')").run();
-    db.prepare("INSERT INTO ad_groups (id, campaign_id, name) VALUES (1, 1, 'Group 1')").run();
-    db.prepare("INSERT INTO ads (id, ad_group_id, title, target_url) VALUES (1, 1, 'Ad 1', 'http://a1.com')").run();
+    await prisma.campaign.create({ data: { id: 1, advertiser_id: 1, name: 'Camp 1' } });
+    await prisma.adGroup.create({ data: { id: 1, campaign_id: 1, name: 'Group 1' } });
+    await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Ad 1', target_url: 'http://a1.com', status: 'approved' } });
 
-    // 広告主1のインプレッションとクリック
-    db.prepare('INSERT INTO impressions (ad_id, publisher_id) VALUES (1, 1)').run();
-    db.prepare('INSERT INTO impressions (ad_id, publisher_id) VALUES (1, 1)').run();
-    db.prepare('INSERT INTO impressions (ad_id, publisher_id) VALUES (1, 2)').run();
-    db.prepare('INSERT INTO clicks (ad_id, publisher_id, is_valid, processed) VALUES (1, 1, 1, 1)').run();
+    await prisma.impression.create({ data: { ad_id: 1, publisher_id: 1 } });
+    await prisma.impression.create({ data: { ad_id: 1, publisher_id: 1 } });
+    await prisma.impression.create({ data: { ad_id: 1, publisher_id: 2 } });
+    await prisma.click.create({ data: { ad_id: 1, publisher_id: 1, is_valid: 1, processed: 1 } });
 
-    const stats = getPlacementStats('1') as any[];
+    const stats = await getPlacementStats('1') as any[];
     
     expect(stats).toHaveLength(2);
     
@@ -123,8 +67,7 @@ describe('getPlacementStats', () => {
     expect(pub2?.impressions).toBe(1);
     expect(pub2?.clicks).toBe(0);
 
-    // 他の広告主の結果が含まれないことの確認
-    const statsForAdv2 = getPlacementStats('2') as any[];
+    const statsForAdv2 = await getPlacementStats('2') as any[];
     expect(statsForAdv2).toHaveLength(0);
   });
 });

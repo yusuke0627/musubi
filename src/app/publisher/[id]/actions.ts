@@ -1,6 +1,6 @@
 "use server";
 
-import db from "@/lib/db";
+import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
@@ -27,16 +27,27 @@ export async function requestPayout(formData: FormData) {
     return { success: false, error: "Forbidden: Access denied" };
   }
 
-  const publisher = db.prepare('SELECT balance FROM publishers WHERE id = ?').get(publisherId) as any;
+  const publisher = await prisma.publisher.findUnique({
+    where: { id: publisherId },
+    select: { balance: true }
+  });
 
   if (publisher && publisher.balance >= 1000) {
-    db.transaction(() => {
-      const amount = publisher.balance;
-      db.prepare('INSERT INTO payouts (publisher_id, amount, status) VALUES (?, ?, ?)')
-        .run(publisherId, amount, 'pending');
-      db.prepare('UPDATE publishers SET balance = balance - ? WHERE id = ?')
-        .run(amount, publisherId);
-    })();
+    const amount = publisher.balance;
+    await prisma.$transaction(async (tx) => {
+      await tx.payout.create({
+        data: {
+          publisher_id: publisherId,
+          amount: amount,
+          status: 'pending',
+        }
+      });
+      await tx.publisher.update({
+        where: { id: publisherId },
+        data: { balance: { decrement: amount } }
+      });
+    });
+    
     revalidatePath(`/publisher/${publisherId}`);
     return { success: true };
   } else {

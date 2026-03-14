@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import prisma from "@/lib/db";
 import { getDailyStats } from "@/services/stats";
 import Link from "next/link";
 import { notFound, forbidden } from "next/navigation";
@@ -13,27 +13,34 @@ interface PageProps {
 }
 
 export default async function PublisherDashboard({ params }: PageProps) {
-  const { id } = await params;
+  const { id: idParam } = await params;
+  const id = parseInt(idParam, 10);
   const session = await auth();
   const user = session?.user as any;
 
   // Authorization check (IDOR Protection)
-  if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id.toString() !== id)) {
+  if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== id)) {
     return forbidden();
   }
 
-  const publisher = db.prepare('SELECT * FROM publishers WHERE id = ?').get(id) as any;
+  const publisher = await prisma.publisher.findUnique({
+    where: { id }
+  });
 
   if (!publisher) return notFound();
 
-  const stats = db.prepare(`
-    SELECT 
-      (SELECT COUNT(*) FROM impressions WHERE publisher_id = ?) as impressions,
-      (SELECT COUNT(*) FROM clicks WHERE publisher_id = ? AND is_valid = 1) as clicks
-  `).get(id, id) as any;
+  const impressionsCount = await prisma.impression.count({
+    where: { publisher_id: id }
+  });
+  const clicksCount = await prisma.click.count({
+    where: { publisher_id: id, is_valid: 1 }
+  });
 
-  const payouts = db.prepare('SELECT * FROM payouts WHERE publisher_id = ? ORDER BY created_at DESC').all(id) as any[];
-  const dailyStats = getDailyStats({ publisherId: id }) as any[];
+  const payouts = await prisma.payout.findMany({
+    where: { publisher_id: id },
+    orderBy: { created_at: 'desc' }
+  });
+  const dailyStats = await getDailyStats({ publisherId: id.toString() }) as any[];
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -46,11 +53,11 @@ export default async function PublisherDashboard({ params }: PageProps) {
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Impressions</h3>
-            <div className="text-2xl font-bold text-gray-900">{stats.impressions}</div>
+            <div className="text-2xl font-bold text-gray-900">{impressionsCount}</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Clicks</h3>
-            <div className="text-2xl font-bold text-gray-900">{stats.clicks}</div>
+            <div className="text-2xl font-bold text-gray-900">{clicksCount}</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Current Balance</h3>

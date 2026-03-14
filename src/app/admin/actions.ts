@@ -1,6 +1,6 @@
 "use server";
 
-import db from "@/lib/db";
+import prisma from "@/lib/db";
 import { runBillingWorker } from "@/services/billing";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -32,7 +32,7 @@ const ReviewAdSchema = z.object({
 export async function processClicks() {
   try {
     await checkAdmin();
-    const processedCount = runBillingWorker();
+    const processedCount = await runBillingWorker();
     revalidatePath("/admin");
     return { success: true, count: processedCount };
   } catch (err) {
@@ -54,8 +54,11 @@ export async function completePayout(formData: FormData) {
   await checkAdmin();
   const { payout_id } = parsed.data;
 
-  db.prepare('UPDATE payouts SET status = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?')
-    .run('paid', payout_id);
+  await prisma.payout.update({
+    where: { id: payout_id },
+    data: { status: 'paid', paid_at: new Date() }
+  });
+
   revalidatePath("/admin");
 }
 
@@ -72,8 +75,11 @@ export async function updateRevShare(formData: FormData) {
   await checkAdmin();
   const { publisher_id, rev_share } = parsed.data;
 
-  db.prepare('UPDATE publishers SET rev_share = ? WHERE id = ?')
-    .run(rev_share, publisher_id);
+  await prisma.publisher.update({
+    where: { id: publisher_id },
+    data: { rev_share }
+  });
+
   revalidatePath("/admin");
 }
 
@@ -91,8 +97,13 @@ export async function reviewAd(formData: FormData) {
   const { ad_id, action, rejection_reason } = parsed.data;
   const status = action === 'approve' ? 'approved' : 'rejected';
   
-  db.prepare('UPDATE ads SET status = ?, rejection_reason = ? WHERE id = ?')
-    .run(status, status === 'rejected' ? rejection_reason : null, ad_id);
+  await prisma.ad.update({
+    where: { id: ad_id },
+    data: { 
+      status, 
+      rejection_reason: status === 'rejected' ? rejection_reason : null 
+    }
+  });
   
   revalidatePath("/admin");
 }
