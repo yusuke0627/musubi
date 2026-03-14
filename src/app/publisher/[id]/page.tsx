@@ -1,10 +1,12 @@
-export const dynamic = "force-dynamic";
 import db from "@/lib/db";
 import { getDailyStats } from "@/services/stats";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, forbidden } from "next/navigation";
 import StatsChart from "@/components/StatsChart";
 import { requestPayout } from "./actions";
+import { auth } from "@/auth";
+
+export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -12,6 +14,14 @@ interface PageProps {
 
 export default async function PublisherDashboard({ params }: PageProps) {
   const { id } = await params;
+  const session = await auth();
+  const user = session?.user as any;
+
+  // Authorization check (IDOR Protection)
+  if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id.toString() !== id)) {
+    return forbidden();
+  }
+
   const publisher = db.prepare('SELECT * FROM publishers WHERE id = ?').get(id) as any;
 
   if (!publisher) return notFound();

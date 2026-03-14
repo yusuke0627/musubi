@@ -1,4 +1,5 @@
 import db, { initSchema } from '../lib/db';
+import bcrypt from 'bcryptjs';
 
 function seed() {
   console.log('🌱 Seeding realistic data...');
@@ -16,7 +17,12 @@ function seed() {
     DELETE FROM campaigns;
     DELETE FROM publishers;
     DELETE FROM advertisers;
+    DELETE FROM users;
   `);
+
+  // 0. Users (Password: "password123")
+  const passwordHash = bcrypt.hashSync('password123', 10);
+  const insertUser = db.prepare('INSERT INTO users (email, password_hash, role, linked_id) VALUES (?, ?, ?, ?)');
 
   // 1. Advertisers
   const advertisers = [
@@ -26,7 +32,11 @@ function seed() {
   ];
 
   const insertAdv = db.prepare('INSERT INTO advertisers (id, name, balance) VALUES (?, ?, ?)');
-  advertisers.forEach(a => insertAdv.run(a.id, a.name, a.balance));
+  advertisers.forEach(a => {
+    insertAdv.run(a.id, a.name, a.balance);
+    // Create login for each advertiser
+    insertUser.run(`adv${a.id}@example.com`, passwordHash, 'advertiser', a.id);
+  });
 
   // 2. Publishers
   const publishers = [
@@ -36,7 +46,14 @@ function seed() {
   ];
 
   const insertPub = db.prepare('INSERT INTO publishers (id, name, domain, rev_share) VALUES (?, ?, ?, ?)');
-  publishers.forEach(p => insertPub.run(p.id, p.name, p.domain, p.rev_share));
+  publishers.forEach(p => {
+    insertPub.run(p.id, p.name, p.domain, p.rev_share);
+    // Create login for each publisher
+    insertUser.run(`pub${p.id}@example.com`, passwordHash, 'publisher', p.id);
+  });
+
+  // Admin user
+  insertUser.run('admin@adnetwork.local', passwordHash, 'admin', null);
 
   // 3. Campaigns
   const campaigns = [

@@ -3,6 +3,7 @@
 import db from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { auth } from "@/auth";
 
 const PayoutRequestSchema = z.object({
   publisher_id: z.coerce.number().int().positive(),
@@ -18,6 +19,14 @@ export async function requestPayout(formData: FormData) {
   }
 
   const publisherId = parsed.data.publisher_id;
+  const session = await auth();
+  const user = session?.user as any;
+
+  // Authorization check
+  if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== publisherId)) {
+    return { success: false, error: "Forbidden: Access denied" };
+  }
+
   const publisher = db.prepare('SELECT balance FROM publishers WHERE id = ?').get(publisherId) as any;
 
   if (publisher && publisher.balance >= 1000) {
