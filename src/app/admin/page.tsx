@@ -3,10 +3,16 @@ import { getDailyStats } from "@/services/stats";
 import Link from "next/link";
 import StatsChart from "@/components/StatsChart";
 import { processClicks, completePayout, updateRevShare, reviewAd } from "./actions";
+import { auth } from "@/auth";
+import { forbidden } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
+  const session = await auth();
+  if (session?.user?.role !== 'admin') {
+    return forbidden();
+  }
   const stats = db.prepare(`
     SELECT 
       (SELECT COUNT(*) FROM impressions) as total_impressions,

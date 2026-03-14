@@ -3,6 +3,15 @@
 import db from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { auth } from "@/auth";
+
+async function checkAuth(advertiserId: number) {
+  const session = await auth();
+  const user = session?.user as any;
+  if (user?.role !== 'admin' && (user?.role !== 'advertiser' || user?.linked_id !== advertiserId)) {
+    throw new Error("Forbidden: Access denied");
+  }
+}
 
 // Zod Schemas
 const CampaignSchema = z.object({
@@ -42,6 +51,7 @@ export async function createCampaign(formData: FormData) {
   }
 
   const { advertiser_id, name, budget, start_date, end_date } = parsed.data;
+  await checkAuth(advertiser_id);
 
   db.prepare('INSERT INTO campaigns (advertiser_id, name, budget, start_date, end_date) VALUES (?, ?, ?, ?, ?)')
     .run(advertiser_id, name, budget, start_date, end_date);
@@ -62,6 +72,8 @@ export async function createAdGroup(formData: FormData) {
   }
 
   const { advertiser_id, campaign_id, name, max_bid, target_device, target_publishers } = parsed.data;
+  await checkAuth(advertiser_id);
+
   const isAll = target_publishers.includes('all') || target_publishers.length === 0;
 
   db.transaction(() => {
@@ -94,6 +106,7 @@ export async function createAd(formData: FormData) {
   }
 
   const { advertiser_id, ad_group_id, title, description, image_url, target_url } = parsed.data;
+  await checkAuth(advertiser_id);
 
   db.prepare('INSERT INTO ads (ad_group_id, title, description, image_url, target_url, status) VALUES (?, ?, ?, ?, ?, ?)')
     .run(ad_group_id, title, description, image_url, target_url, 'pending');
@@ -115,6 +128,7 @@ export async function updateCampaign(formData: FormData) {
   }
 
   const { advertiser_id, name, budget, start_date, end_date } = parsed.data;
+  await checkAuth(advertiser_id);
 
   db.prepare('UPDATE campaigns SET name = ?, budget = ?, start_date = ?, end_date = ? WHERE id = ?')
     .run(name, budget, start_date, end_date, id);
@@ -137,6 +151,8 @@ export async function updateAdGroup(formData: FormData) {
   }
 
   const { advertiser_id, campaign_id, name, max_bid, target_device, target_publishers } = parsed.data;
+  await checkAuth(advertiser_id);
+
   const isAll = target_publishers.includes('all') || target_publishers.length === 0;
 
   db.transaction(() => {
@@ -173,6 +189,7 @@ export async function updateAd(formData: FormData) {
   }
 
   const { advertiser_id, ad_group_id, title, description, image_url, target_url } = parsed.data;
+  await checkAuth(advertiser_id);
 
   // 現在のデータを取得して変更があるか確認
   const current = db.prepare('SELECT * FROM ads WHERE id = ?').get(id) as any;

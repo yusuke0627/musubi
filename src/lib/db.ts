@@ -2,7 +2,9 @@ import Database from 'better-sqlite3';
 import path from 'path';
 
 // Next.js のホットリロード対策（シングルトン）
-const dbPath = path.join(process.cwd(), 'adnetwork.db');
+const dbPath = (typeof process !== 'undefined' && typeof process.cwd === 'function')
+  ? path.join(process.cwd(), 'adnetwork.db')
+  : 'adnetwork.db';
 
 const globalForDb = global as unknown as { db: Database.Database };
 
@@ -30,6 +32,15 @@ export function initSchema(database: Database.Database = db) {
       balance REAL DEFAULT 0,
       total_earnings REAL DEFAULT 0,
       rev_share REAL DEFAULT 0.7
+    );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('admin', 'advertiser', 'publisher')),
+      linked_id INTEGER, -- advertisers.id or publishers.id
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS payouts (

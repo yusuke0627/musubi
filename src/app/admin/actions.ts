@@ -4,6 +4,14 @@ import db from "@/lib/db";
 import { runBillingWorker } from "@/services/billing";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { auth } from "@/auth";
+
+async function checkAdmin() {
+  const session = await auth();
+  if (session?.user?.role !== 'admin') {
+    throw new Error("Forbidden: Admin access required");
+  }
+}
 
 const CompletePayoutSchema = z.object({
   payout_id: z.coerce.number().int().positive(),
@@ -23,12 +31,13 @@ const ReviewAdSchema = z.object({
 // クリック確定処理（Billing Worker実行）
 export async function processClicks() {
   try {
+    await checkAdmin();
     const processedCount = runBillingWorker();
     revalidatePath("/admin");
     return { success: true, count: processedCount };
   } catch (err) {
     console.error("Billing error:", err);
-    return { success: false, error: "Failed to process clicks" };
+    return { success: false, error: err instanceof Error ? err.message : "Failed to process clicks" };
   }
 }
 
@@ -42,6 +51,7 @@ export async function completePayout(formData: FormData) {
     throw new Error("Invalid payout data");
   }
 
+  await checkAdmin();
   const { payout_id } = parsed.data;
 
   db.prepare('UPDATE payouts SET status = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?')
@@ -59,6 +69,7 @@ export async function updateRevShare(formData: FormData) {
     throw new Error("Invalid rev_share data");
   }
 
+  await checkAdmin();
   const { publisher_id, rev_share } = parsed.data;
 
   db.prepare('UPDATE publishers SET rev_share = ? WHERE id = ?')
@@ -76,6 +87,7 @@ export async function reviewAd(formData: FormData) {
     throw new Error("Invalid review data");
   }
 
+  await checkAdmin();
   const { ad_id, action, rejection_reason } = parsed.data;
   const status = action === 'approve' ? 'approved' : 'rejected';
   
