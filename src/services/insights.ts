@@ -208,13 +208,13 @@ export async function getAdvertiserInsights(advertiserId: number): Promise<Insig
   ads.forEach(ad => {
     const imps = ad._count.impressions;
     const clicks = ad._count.clicks;
-    if (imps >= 100) { // シードデータに合わせて100回以上に
+    if (imps >= 100) {
       const ctr = clicks / imps;
-      if (ctr < 0.005) { // 0.5%未満
+      if (ctr < 0.005) { // CTR < 0.5%
         insights.push({
-          type: 'info',
-          title: '広告パフォーマンスの改善提案',
-          description: `広告「${ad.title}」のクリック率が低くなっています（${(ctr * 100).toFixed(2)}%）。クリエイティブの更新を検討してください。`,
+          type: 'warning',
+          title: '広告のパフォーマンス低下',
+          description: `広告「${ad.title}」のクリック率が著しく低くなっています（${(ctr * 100).toFixed(2)}%）。クリエイティブの改善を検討してください。`,
         });
       }
     }
