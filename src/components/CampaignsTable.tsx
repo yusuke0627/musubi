@@ -7,14 +7,12 @@ interface Campaign {
   id: number;
   name: string;
   budget: number;
+  daily_budget: number;
   start_date: string | Date;
   end_date?: string | Date | null;
 }
 
-interface CampaignsTableProps {
-  campaigns: Campaign[];
-  advertiserId: string;
-}
+// ... (interface CampaignsTableProps unchanged)
 
 export default function CampaignsTable({ campaigns, advertiserId }: CampaignsTableProps) {
   const [editModal, setEditModal] = useState<{ isOpen: boolean; data: any }>({ isOpen: false, data: null });
@@ -36,7 +34,7 @@ export default function CampaignsTable({ campaigns, advertiserId }: CampaignsTab
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Budget</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Budget (Total / Daily)</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Duration</th>
               <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-widest">Actions</th>
             </tr>
@@ -45,7 +43,10 @@ export default function CampaignsTable({ campaigns, advertiserId }: CampaignsTab
             {campaigns.map((c) => (
               <tr key={c.id} className="hover:bg-gray-50 transition-colors text-sm">
                 <td className="px-6 py-4 font-bold text-gray-900">{c.name}</td>
-                <td className="px-6 py-4 text-right font-mono font-bold text-slate-700">¥{c.budget.toLocaleString()}</td>
+                <td className="px-6 py-4 text-right">
+                  <div className="font-mono font-bold text-slate-700">¥{c.budget.toLocaleString()}</div>
+                  <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Daily: ¥{c.daily_budget.toLocaleString()}</div>
+                </td>
                 <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
                   <div className="font-bold">{new Date(c.start_date).toLocaleDateString('ja-JP')}</div>
                   <div className="text-[10px]">to {c.end_date ? new Date(c.end_date).toLocaleDateString('ja-JP') : 'Endless'}</div>

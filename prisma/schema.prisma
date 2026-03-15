@@ -63,6 +63,7 @@ model Campaign {
   name          String
   budget        Float     @default(0)
   spent         Float     @default(0)
+  daily_budget  Float     @default(0)
   start_date    DateTime  @default(now())
   end_date      DateTime?
   advertiser    Advertiser @relation(fields: [advertiser_id], references: [id])

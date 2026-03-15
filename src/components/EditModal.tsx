@@ -52,9 +52,15 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data, c
                   <input type="date" name="end_date" defaultValue={data.end_date?.split(' ')[0]} className="w-full p-2 border rounded-lg text-sm text-slate-900 font-medium" />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Budget (¥)</label>
-                <input type="number" name="budget" defaultValue={data.budget} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-slate-200 text-slate-900 font-medium" required />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Total Budget (¥)</label>
+                  <input type="number" name="budget" defaultValue={data.budget} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-slate-200 text-slate-900 font-medium" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Daily Budget (¥)</label>
+                  <input type="number" name="daily_budget" defaultValue={data.daily_budget} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-slate-200 text-slate-900 font-medium" required />
+                </div>
               </div>
             </>
           )}

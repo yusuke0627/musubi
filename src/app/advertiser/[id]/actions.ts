@@ -18,6 +18,7 @@ const CampaignSchema = z.object({
   advertiser_id: z.coerce.number().int().positive(),
   name: z.string().min(1, "Name is required").max(100),
   budget: z.coerce.number().nonnegative().default(0),
+  daily_budget: z.coerce.number().nonnegative().default(0),
   start_date: z.string().nullable().optional().transform(v => v === "" ? null : v),
   end_date: z.string().nullable().optional().transform(v => v === "" ? null : v),
 });
@@ -50,7 +51,7 @@ export async function createCampaign(formData: FormData) {
     throw new Error("Invalid campaign data");
   }
 
-  const { advertiser_id, name, budget, start_date, end_date } = parsed.data;
+  const { advertiser_id, name, budget, daily_budget, start_date, end_date } = parsed.data;
   await checkAuth(advertiser_id);
 
   await prisma.campaign.create({
@@ -58,6 +59,7 @@ export async function createCampaign(formData: FormData) {
       advertiser_id,
       name,
       budget,
+      daily_budget,
       start_date: start_date ? new Date(start_date) : undefined,
       end_date: end_date ? new Date(end_date) : null,
     }
@@ -150,7 +152,7 @@ export async function updateCampaign(formData: FormData) {
     throw new Error("Invalid campaign data");
   }
 
-  const { advertiser_id, name, budget, start_date, end_date } = parsed.data;
+  const { advertiser_id, name, budget, daily_budget, start_date, end_date } = parsed.data;
   await checkAuth(advertiser_id);
 
   await prisma.campaign.update({
@@ -158,6 +160,7 @@ export async function updateCampaign(formData: FormData) {
     data: {
       name,
       budget,
+      daily_budget,
       start_date: start_date ? new Date(start_date) : undefined,
       end_date: end_date ? new Date(end_date) : null,
     }

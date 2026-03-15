@@ -165,9 +165,15 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
                   <input type="date" name="end_date" className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Total Budget (¥)</label>
-                <input type="number" name="budget" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-slate-200 outline-none" placeholder="50000" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Total Budget (¥)</label>
+                  <input type="number" name="budget" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-slate-200 outline-none" placeholder="50000" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Daily Budget (¥)</label>
+                  <input type="number" name="daily_budget" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-slate-200 outline-none" placeholder="1000" />
+                </div>
               </div>
               <button type="submit" className="w-full bg-slate-800 text-white py-2.5 rounded-lg font-bold hover:bg-slate-700 transition-colors shadow-md">
                 Create Campaign

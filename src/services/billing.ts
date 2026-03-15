@@ -64,6 +64,40 @@ export async function runBillingWorker() {
         const maxBid = ad.adGroup.max_bid;
         const advertiserId = ad.adGroup.campaign.advertiser_id;
         const campaignId = ad.adGroup.campaign.id;
+        const campaign = ad.adGroup.campaign;
+
+        // 4. Total Budget Check
+        if (campaign.budget > 0 && (campaign.spent + maxBid) > campaign.budget) {
+          await tx.click.update({
+            where: { id: click.id },
+            data: { is_valid: 0, processed: 1, invalid_reason: 'Campaign budget exceeded' }
+          });
+          return;
+        }
+
+        // 5. Daily Budget Check
+        if (campaign.daily_budget > 0) {
+          const startOfDay = new Date(click.created_at);
+          startOfDay.setUTCHours(0, 0, 0, 0);
+
+          const dailySpent = await tx.click.aggregate({
+            where: {
+              ad: { adGroup: { campaign_id: campaignId } },
+              is_valid: 1,
+              created_at: { gte: startOfDay }
+            },
+            _sum: { cost: true }
+          });
+
+          const currentDailySpent = dailySpent._sum.cost || 0;
+          if ((currentDailySpent + maxBid) > campaign.daily_budget) {
+            await tx.click.update({
+              where: { id: click.id },
+              data: { is_valid: 0, processed: 1, invalid_reason: 'Daily budget exceeded' }
+            });
+            return;
+          }
+        }
 
         // 広告主の残高チェックと減算
         const advertiser = await tx.advertiser.findUnique({
