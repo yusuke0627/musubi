@@ -104,7 +104,7 @@ export async function getAdminInsights(): Promise<Insight[]> {
 export async function getAdvertiserInsights(advertiserId: number): Promise<Insight[]> {
   const insights: Insight[] = [];
 
-  const [rejectedAdsCount, campaigns] = await Promise.all([
+  const [rejectedAdsCount, campaigns, advertiser, ads] = await Promise.all([
     prisma.ad.count({
       where: {
         status: 'rejected',
@@ -114,6 +114,21 @@ export async function getAdvertiserInsights(advertiserId: number): Promise<Insig
     prisma.campaign.findMany({
       where: { advertiser_id: advertiserId },
       select: { name: true, budget: true, spent: true }
+    }),
+    prisma.advertiser.findUnique({
+      where: { id: advertiserId },
+      select: { balance: true }
+    }),
+    prisma.ad.findMany({
+      where: { adGroup: { campaign: { advertiser_id: advertiserId } } },
+      include: {
+        _count: {
+          select: {
+            impressions: true,
+            clicks: { where: { is_valid: 1 } }
+          }
+        }
+      }
     })
   ]);
 
@@ -134,6 +149,35 @@ export async function getAdvertiserInsights(advertiserId: number): Promise<Insig
         type: 'warning',
         title: 'キャンペーン予算アラート',
         description: `キャンペーン「${campaign.name}」の予算消化率が${Math.round((campaign.spent / campaign.budget) * 100)}%に達しています。`,
+      });
+    }
+  });
+
+  // Issue #67: Advertiser Anomaly Detection
+  // 1. Balance Check
+  if (advertiser && advertiser.balance < 1000) {
+    insights.push({
+      type: 'error',
+      title: 'Insufficient Balance',
+      description: `Your balance is ¥${advertiser.balance.toLocaleString()}. Campaigns will stop when it reaches 0.`,
+    });
+  } else if (advertiser && advertiser.balance < 5000) {
+    insights.push({
+      type: 'warning',
+      title: 'Low Balance',
+      description: `Your balance is ¥${advertiser.balance.toLocaleString()}. Consider topping up soon.`,
+    });
+  }
+
+  // 2. Low CTR Alert (Creative optimization)
+  ads.forEach(ad => {
+    const imps = ad._count.impressions;
+    const clicks = ad._count.clicks;
+    if (imps >= 1000 && (clicks / imps) < 0.001) {
+      insights.push({
+        type: 'info',
+        title: 'Ad Performance Insight',
+        description: `Ad "${ad.title}" has a low CTR (${((clicks / imps) * 100).toFixed(2)}%). Consider updating the creative.`,
       });
     }
   });
