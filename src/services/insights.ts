@@ -48,6 +48,30 @@ export async function getAdminInsights(): Promise<Insight[]> {
     });
   }
 
+  // Issue #64: Admin Anomaly Detection
+  // 1. High IVT Rate (Last 24h)
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const totalClicksLast24h = await prisma.click.count({ where: { created_at: { gte: yesterday } } });
+  const invalidClicksLast24h = await prisma.click.count({ where: { created_at: { gte: yesterday }, is_valid: 0, processed: 1 } });
+  
+  if (totalClicksLast24h >= 50 && (invalidClicksLast24h / totalClicksLast24h) > 0.2) {
+    insights.push({
+      type: 'error',
+      title: 'High Network IVT Rate',
+      description: `Abnormal IVT rate detected: ${Math.round((invalidClicksLast24h / totalClicksLast24h) * 100)}% of clicks in the last 24h are invalid.`,
+    });
+  }
+
+  // 2. Low Balance Advertisers
+  const lowBalanceAdsCount = await prisma.advertiser.count({ where: { balance: { lt: 1000 } } });
+  if (lowBalanceAdsCount > 0) {
+    insights.push({
+      type: 'warning',
+      title: 'Advertiser Balance Alert',
+      description: `${lowBalanceAdsCount} advertisers have a balance below ¥1,000. Ads for these accounts may stop serving soon.`,
+    });
+  }
+
   return insights;
 }
 
