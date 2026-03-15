@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function seed() {
-  console.log('🌱 Seeding realistic data with Prisma...');
+  console.log('🌱 Seeding realistic anomaly data with Prisma...');
 
   // 1. Clear existing data
   await prisma.click.deleteMany();
@@ -26,16 +26,14 @@ async function seed() {
   const advertisersData = [
     { id: 1, name: 'NovaTech Electronics', balance: 250000 },
     { id: 2, name: 'Luxe Global Travel', balance: 120000 },
-    { id: 3, name: 'Organic Life Market', balance: 500 }, // Lower than 1,000 to trigger alert
+    { id: 3, name: 'Organic Life Market', balance: 100 }, // Extremely low to trigger alert
+    { id: 4, name: 'Budget Strapped Inc', balance: 5000 },
+    { id: 5, name: 'Anomaly Testing Corp', balance: 50000 }, // For CTR/IVT testing
   ];
 
   for (const a of advertisersData) {
     await prisma.advertiser.create({
-      data: {
-        id: a.id,
-        name: a.name,
-        balance: a.balance,
-      }
+      data: { id: a.id, name: a.name, balance: a.balance }
     });
     await prisma.user.create({
       data: {
@@ -56,12 +54,7 @@ async function seed() {
 
   for (const p of publishersData) {
     await prisma.publisher.create({
-      data: {
-        id: p.id,
-        name: p.name,
-        domain: p.domain,
-        rev_share: p.rev_share,
-      }
+      data: { id: p.id, name: p.name, domain: p.domain, rev_share: p.rev_share }
     });
     await prisma.user.create({
       data: {
@@ -75,18 +68,16 @@ async function seed() {
 
   // 5. Admin user
   await prisma.user.create({
-    data: {
-      email: 'admin@adnetwork.local',
-      password_hash: passwordHash,
-      role: 'admin',
-    }
+    data: { email: 'admin@adnetwork.local', password_hash: passwordHash, role: 'admin' }
   });
 
   // 6. Campaigns
   const campaignsData = [
-    { id: 1, advertiser_id: 1, name: 'Summer Smartphone Launch', budget: 100000 },
-    { id: 2, advertiser_id: 2, name: 'European Getaway 2026', budget: 80000 },
-    { id: 3, advertiser_id: 3, name: 'Spring Organic Fair', budget: 20000 },
+    { id: 1, advertiser_id: 1, name: 'Summer Smartphone Launch', budget: 100000, spent: 45000, daily_budget: 0 },
+    { id: 2, advertiser_id: 2, name: 'European Getaway 2026', budget: 80000, spent: 12000, daily_budget: 5000 },
+    { id: 3, advertiser_id: 3, name: 'Spring Organic Fair', budget: 20000, spent: 19500, daily_budget: 1000 }, // Near total budget
+    { id: 4, advertiser_id: 4, name: 'Daily Budget Test', budget: 50000, spent: 10000, daily_budget: 500 }, // Near daily budget
+    { id: 5, advertiser_id: 5, name: 'Low CTR Anomaly Campaign', budget: 100000, spent: 5000, daily_budget: 0 },
   ];
 
   for (const c of campaignsData) {
@@ -96,6 +87,8 @@ async function seed() {
         advertiser_id: c.advertiser_id,
         name: c.name,
         budget: c.budget,
+        spent: c.spent,
+        daily_budget: c.daily_budget,
         start_date: new Date('2026-01-01T00:00:00Z'),
       }
     });
@@ -103,182 +96,85 @@ async function seed() {
 
   // 7. Ad Groups
   const adGroupsData = [
-    { id: 1, campaign_id: 1, name: 'Tech Enthusiasts (Mobile)', max_bid: 120, target_device: 'mobile' },
-    { id: 2, campaign_id: 2, name: 'Luxury Travelers (Desktop)', max_bid: 250, target_device: 'desktop' },
-    { id: 3, campaign_id: 3, name: 'Healthy Eaters (All)', max_bid: 85, target_device: 'all' },
+    { id: 1, campaign_id: 1, name: 'Tech Enthusiasts', max_bid: 120, target_device: 'mobile' },
+    { id: 2, campaign_id: 2, name: 'Luxury Travelers', max_bid: 250, target_device: 'desktop' },
+    { id: 3, campaign_id: 3, name: 'Healthy Eaters', max_bid: 85, target_device: 'all' },
+    { id: 4, campaign_id: 4, name: 'Budget Seekers', max_bid: 50, target_device: 'all' },
+    { id: 5, campaign_id: 5, name: 'Invisible Ad Group', max_bid: 100, target_device: 'all' },
   ];
 
   for (const g of adGroupsData) {
     await prisma.adGroup.create({
-      data: {
-        id: g.id,
-        campaign_id: g.campaign_id,
-        name: g.name,
-        max_bid: g.max_bid,
-        target_device: g.target_device,
-        is_all_publishers: 1,
-      }
+      data: { id: g.id, campaign_id: g.campaign_id, name: g.name, max_bid: g.max_bid, target_device: g.target_device, is_all_publishers: 1 }
     });
   }
 
   // 8. Ads
   const adsData = [
-    { id: 1, ad_group_id: 1, title: 'The New NovaPhone 15 Pro', description: 'Experience the future of mobile technology.', image_url: '/images/1.jpeg', target_url: 'https://example.com/novaphone', status: 'approved' },
-    { id: 2, ad_group_id: 2, title: 'Unforgettable Paris nights', description: 'Book your luxury suite now and save 20%.', image_url: '/images/2.jpeg', target_url: 'https://example.com/paris', status: 'approved' },
-    { id: 3, ad_group_id: 3, title: 'Fresh Greens, Every Day', description: '100% certified organic produce delivered.', image_url: '/images/3.jpeg', target_url: 'https://example.com/organic', status: 'approved' },
-    { id: 4, ad_group_id: 1, title: 'NovaWatch Series 5', description: 'Track your health with precision.', image_url: '/images/4.png', target_url: 'https://example.com/novawatch', status: 'approved' },
-    { id: 5, ad_group_id: 2, title: 'Tropical Island Escape', description: 'All-inclusive resorts starting at $199.', image_url: '/images/5.jpeg', target_url: 'https://example.com/island', status: 'approved' },
-    { id: 6, ad_group_id: 1, title: 'NovaPad Air - Preorder Now', description: 'The thinnest tablet ever made.', image_url: '/images/6.jpeg', target_url: 'https://example.com/novapad', status: 'pending' },
-    { id: 7, ad_group_id: 3, title: 'Vegan Meal Kits', description: 'Delicious recipes delivered to your door.', image_url: '/images/7.png', target_url: 'https://example.com/vegan', status: 'pending' },
+    { id: 1, ad_group_id: 1, title: 'NovaPhone 15 Pro', image_url: '/images/1.jpeg', target_url: 'https://ex.com/1', status: 'approved' },
+    { id: 2, ad_group_id: 2, title: 'Paris Getaway', image_url: '/images/2.jpeg', target_url: 'https://ex.com/2', status: 'approved' },
+    { id: 3, ad_group_id: 3, title: 'Organic Carrots', image_url: '/images/3.jpeg', target_url: 'https://ex.com/3', status: 'approved' },
+    { id: 4, ad_group_id: 4, title: 'Budget Plan', image_url: '/images/1.jpeg', target_url: 'https://ex.com/4', status: 'approved' },
+    { id: 5, ad_group_id: 5, title: 'Ultra Low CTR Ad', image_url: '/images/5.jpeg', target_url: 'https://ex.com/5', status: 'approved' },
+    { id: 6, ad_group_id: 1, title: 'Rejected Gadget', image_url: '/images/6.jpeg', target_url: 'https://ex.com/6', status: 'rejected', rejection_reason: 'Inappropriate content' },
   ];
 
   for (const ad of adsData) {
-    await prisma.ad.create({
-      data: ad
-    });
+    await prisma.ad.create({ data: ad });
   }
 
-  // 9. Historical Data (Last 7 Days)
-  console.log('📈 Generating historical stats...');
-  for (let i = 0; i < 7; i++) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    date.setHours(12, 0, 0, 0);
-
-    for (const ad of adsData.filter(a => a.status === 'approved')) {
-      for (const pub of publishersData) {
-        const impsCount = Math.floor(Math.random() * 50) + 10;
-        const clicksCount = Math.floor(impsCount * (Math.random() * 0.1));
-
-        for (let j = 0; j < impsCount; j++) {
-          await prisma.impression.create({
-            data: {
-              ad_id: ad.id,
-              publisher_id: pub.id,
-              user_agent: 'Mozilla/5.0...',
-              ip_address: '127.0.0.1',
-              created_at: date,
-            }
-          });
-        }
-
-        const group = adGroupsData.find(g => g.id === ad.ad_group_id);
-        const cost = group?.max_bid || 0;
-
-        for (let j = 0; j < clicksCount; j++) {
-          await prisma.click.create({
-            data: {
-              ad_id: ad.id,
-              publisher_id: pub.id,
-              campaign_id: group?.campaign_id,
-              cost: cost,
-              user_agent: 'Mozilla/5.0...',
-              ip_address: '127.0.0.1',
-              is_valid: 1,
-              processed: 1,
-              created_at: date,
-            }
-          });
-          // Update spent
-          if (group?.campaign_id) {
-            await prisma.campaign.update({
-              where: { id: group.campaign_id },
-              data: { spent: { increment: cost } }
-            });
-          }
-        }
-      }
-    }
-  }
-
-  // 10. Pending Clicks for Billing
-  console.log('💰 Adding pending clicks for billing...');
-  await prisma.click.createMany({
-    data: [
-      { ad_id: 1, publisher_id: 1, user_agent: 'Mozilla/5.0...', ip_address: '192.168.1.5', processed: 0 },
-      { ad_id: 2, publisher_id: 2, user_agent: 'Mozilla/5.0...', ip_address: '192.168.1.10', processed: 0 },
-      { ad_id: 1, publisher_id: 3, user_agent: 'Mozilla/5.0...', ip_address: '10.0.0.1', processed: 0 },
-    ]
-  });
-
-  // 11. Payout Data
-  console.log('💸 Adding payout requests and history...');
-  await prisma.payout.createMany({
-    data: [
-      { publisher_id: 1, amount: 5000, status: 'pending', created_at: new Date('2026-03-10T10:00:00Z') },
-      { publisher_id: 2, amount: 12000, status: 'pending', created_at: new Date('2026-03-11T09:30:00Z') },
-      { publisher_id: 1, amount: 3500, status: 'paid', created_at: new Date('2026-02-15T14:00:00Z'), paid_at: new Date('2026-02-16T10:00:00Z') },
-      { publisher_id: 3, amount: 8200, status: 'paid', created_at: new Date('2026-03-01T11:00:00Z'), paid_at: new Date('2026-03-02T09:00:00Z') },
-    ]
-  });
-
-  // 12. Anomaly Data for Admin Insights (Issue #64)
-  console.log('🚨 Adding anomaly data (High IVT)...');
   const now = new Date();
-  const recentClicks = [];
-  for (let i = 0; i < 60; i++) {
-    recentClicks.push({
-      ad_id: 1,
-      publisher_id: 1,
-      campaign_id: 1,
-      cost: 0,
-      user_agent: 'Bot/1.0 (Testing Anomaly)',
-      ip_address: `192.168.100.${i}`,
-      is_valid: 0, // Invalid
-      processed: 1,
-      invalid_reason: 'Bot detected',
-      created_at: new Date(now.getTime() - (i * 10 * 60 * 1000)), // Last 10 hours
-    });
-  }
-  await prisma.click.createMany({ data: recentClicks });
 
-  // 14. Network Trends Data for Admin Insights (Issue #65)
-  console.log('📉 Adding network trend data (Drops)...');
-  const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-  // Previous 24h (Lots of activity)
-  for (let i = 0; i < 200; i++) {
+  // 9. Low CTR Anomaly Data (Ad ID 5)
+  console.log('📉 Generating Low CTR anomaly data...');
+  for (let i = 0; i < 1000; i++) {
     await prisma.impression.create({
-      data: { ad_id: 1, publisher_id: 1, user_agent: '...', ip_address: '1.1.1.1', created_at: new Date(twoDaysAgo.getTime() + (i * 5 * 60 * 1000)) }
+      data: { ad_id: 5, publisher_id: 1, created_at: new Date(now.getTime() - i * 60 * 1000) }
     });
   }
-  for (let i = 0; i < 40; i++) {
+  // Only 2 clicks for 1000 imps (0.2% CTR)
+  for (let i = 0; i < 2; i++) {
     await prisma.click.create({
-      data: { ad_id: 1, publisher_id: 1, campaign_id: 1, cost: 0, is_valid: 1, processed: 1, created_at: new Date(twoDaysAgo.getTime() + (i * 20 * 60 * 1000)) }
+      data: { ad_id: 5, publisher_id: 1, is_valid: 1, processed: 1, cost: 100, created_at: now }
     });
   }
 
-  // Current 24h (Very low activity)
-  for (let i = 0; i < 20; i++) {
-    await prisma.impression.create({
-      data: { ad_id: 1, publisher_id: 1, user_agent: '...', ip_address: '1.1.1.2', created_at: new Date(yesterday.getTime() + (i * 60 * 60 * 1000)) }
-    });
-  }
-  for (let i = 0; i < 5; i++) {
+  // 10. High IVT Anomaly Data (Admin Insight #64)
+  console.log('🚨 Generating High IVT anomaly data...');
+  for (let i = 0; i < 100; i++) {
+    const isValid = i < 20; // 80% IVT rate
     await prisma.click.create({
-      data: { ad_id: 1, publisher_id: 1, campaign_id: 1, cost: 0, is_valid: 1, processed: 1, created_at: new Date(yesterday.getTime() + (i * 4 * 60 * 60 * 1000)) }
+      data: {
+        ad_id: 1,
+        publisher_id: 2,
+        is_valid: isValid ? 1 : 0,
+        processed: 1,
+        invalid_reason: isValid ? null : 'Bot detected',
+        user_agent: 'Bot/1.0',
+        ip_address: `192.168.1.${i}`,
+        created_at: new Date(now.getTime() - i * 2 * 60 * 1000)
+      }
     });
   }
 
-  // 15. Final Balances Update
-  await prisma.publisher.update({
-    where: { id: 1 },
-    data: { balance: { increment: 1500 }, total_earnings: { increment: 10000 } }
-  });
-  await prisma.publisher.update({
-    where: { id: 2 },
-    data: { balance: { increment: 2500 }, total_earnings: { increment: 15000 } }
-  });
+  // 11. Daily Budget Near Limit (Campaign 4)
+  console.log('💰 Generating Daily Budget usage data...');
+  for (let i = 0; i < 9; i++) { // 9 * 50 = 450 (90% of 500)
+    await prisma.click.create({
+      data: {
+        ad_id: 4,
+        publisher_id: 3,
+        is_valid: 1,
+        processed: 1,
+        cost: 50,
+        created_at: now
+      }
+    });
+  }
 
-  console.log('✅ Seeding completed with Prisma!');
+  console.log('✅ Anomaly seeding completed!');
 }
 
 seed()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => { console.error(e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); });
