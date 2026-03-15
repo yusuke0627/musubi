@@ -1,7 +1,9 @@
 import prisma from "@/lib/db";
 import { getDailyStats } from "@/services/stats";
+import { getAdminInsights } from "@/services/insights";
 import Link from "next/link";
 import StatsChart from "@/components/StatsChart";
+import InsightSection from "@/components/InsightSection";
 import { processClicks, completePayout, updateRevShare, reviewAd } from "./actions";
 import { auth } from "@/auth";
 import { forbidden } from "next/navigation";
@@ -17,6 +19,8 @@ export default async function AdminDashboard() {
   // Global Stats
   const totalImpressions = await prisma.impression.count();
   const totalClicks = await prisma.click.count({ where: { is_valid: 1 } });
+
+  const adminInsights = await getAdminInsights();
 
   const advertisers = await prisma.advertiser.findMany({
     orderBy: { name: 'asc' }
@@ -111,6 +115,9 @@ export default async function AdminDashboard() {
           </div>
         </section>
 
+        {/* Insights Section */}
+        <InsightSection insights={adminInsights} />
+
         {/* Chart */}
         <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h2 className="text-xl font-bold mb-6 text-gray-800">Network Performance Over Time</h2>
@@ -119,7 +126,7 @@ export default async function AdminDashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Click Validation */}
-          <section className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[550px]">
+          <section id="pending-clicks" className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[550px]">
             <div className="p-6 border-b border-gray-100 bg-orange-50/30">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-800 tracking-tight">Click Validation</h2>
@@ -172,7 +179,7 @@ export default async function AdminDashboard() {
           </section>
 
           {/* Ad Review Queue */}
-          <section className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[500px]">
+          <section id="pending-ads" className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[500px]">
             <div className="p-6 border-b border-gray-100 bg-emerald-50/30">
               <h2 className="text-xl font-bold text-gray-800">Ad Review Queue</h2>
             </div>
@@ -211,7 +218,7 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Payout Management */}
-        <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <section id="pending-payouts" className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
             <h2 className="text-xl font-bold text-gray-800">Payout Management</h2>
           </div>
