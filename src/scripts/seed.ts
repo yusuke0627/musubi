@@ -26,7 +26,7 @@ async function seed() {
   const advertisersData = [
     { id: 1, name: 'NovaTech Electronics', balance: 250000 },
     { id: 2, name: 'Luxe Global Travel', balance: 120000 },
-    { id: 3, name: 'Organic Life Market', balance: 45000 },
+    { id: 3, name: 'Organic Life Market', balance: 500 }, // Lower than 1,000 to trigger alert
   ];
 
   for (const a of advertisersData) {
@@ -212,7 +212,27 @@ async function seed() {
     ]
   });
 
-  // 12. Final Balances Update
+  // 12. Anomaly Data for Admin Insights (Issue #64)
+  console.log('🚨 Adding anomaly data (High IVT)...');
+  const now = new Date();
+  const recentClicks = [];
+  for (let i = 0; i < 60; i++) {
+    recentClicks.push({
+      ad_id: 1,
+      publisher_id: 1,
+      campaign_id: 1,
+      cost: 0,
+      user_agent: 'Bot/1.0 (Testing Anomaly)',
+      ip_address: `192.168.100.${i}`,
+      is_valid: 0, // Invalid
+      processed: 1,
+      invalid_reason: 'Bot detected',
+      created_at: new Date(now.getTime() - (i * 10 * 60 * 1000)), // Last 10 hours
+    });
+  }
+  await prisma.click.createMany({ data: recentClicks });
+
+  // 13. Final Balances Update
   await prisma.publisher.update({
     where: { id: 1 },
     data: { balance: { increment: 1500 }, total_earnings: { increment: 10000 } }
