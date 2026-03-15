@@ -71,7 +71,7 @@ export default function InsightSection({ insights }: InsightSectionProps) {
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
-        Insights & Tasks
+        インサイトとタスク
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {insights.map((insight, index) => (
@@ -98,7 +98,7 @@ export default function InsightSection({ insights }: InsightSectionProps) {
                       href={insight.link}
                       className="text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1 hover:underline"
                     >
-                      {insight.linkLabel || 'View Details'}
+                      {insight.linkLabel || '詳細を表示'}
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
