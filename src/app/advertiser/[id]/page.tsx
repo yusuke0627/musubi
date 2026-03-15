@@ -1,5 +1,6 @@
 import prisma from "@/lib/db";
 import { getDailyStats, getPlacementStats } from "@/services/stats";
+import { getAdvertiserInsights } from "@/services/insights";
 import Link from "next/link";
 import { notFound, forbidden } from "next/navigation";
 import StatsChart from "@/components/StatsChart";
@@ -7,6 +8,7 @@ import AdsPerformanceTable from "@/components/AdsPerformanceTable";
 import CampaignsTable from "@/components/CampaignsTable";
 import AdGroupsTable from "@/components/AdGroupsTable";
 import PlacementReportTable from "@/components/PlacementReportTable";
+import InsightSection from "@/components/InsightSection";
 import { createCampaign, createAdGroup, createAd } from "./actions";
 import { auth } from "@/auth";
 
@@ -32,6 +34,8 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
   });
 
   if (!advertiser) return notFound();
+
+  const advertiserInsights = await getAdvertiserInsights(id);
 
   // キャンペーン一覧の取得
   const campaigns = await prisma.campaign.findMany({
@@ -123,6 +127,9 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
             <p className="text-[10px] text-blue-500 mt-1 font-medium italic">Service & Optimization Fee</p>
           </div>
         </section>
+
+        {/* Insights Section */}
+        <InsightSection insights={advertiserInsights} />
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

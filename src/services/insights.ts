@@ -102,8 +102,43 @@ export async function getAdminInsights(): Promise<Insight[]> {
 }
 
 export async function getAdvertiserInsights(advertiserId: number): Promise<Insight[]> {
-  // To be implemented in later issues
-  return [];
+  const insights: Insight[] = [];
+
+  const [rejectedAdsCount, campaigns] = await Promise.all([
+    prisma.ad.count({
+      where: {
+        status: 'rejected',
+        adGroup: { campaign: { advertiser_id: advertiserId } }
+      }
+    }),
+    prisma.campaign.findMany({
+      where: { advertiser_id: advertiserId },
+      select: { name: true, budget: true, spent: true }
+    })
+  ]);
+
+  // Issue #66: Advertiser Tasks
+  // 1. Rejected Ads
+  if (rejectedAdsCount > 0) {
+    insights.push({
+      type: 'error',
+      title: '広告が却下されました',
+      description: `管理者に却下された広告が${rejectedAdsCount}件あります。内容を確認して修正してください。`,
+    });
+  }
+
+  // 2. Budget Alerts
+  campaigns.forEach(campaign => {
+    if (campaign.budget > 0 && (campaign.spent / campaign.budget) >= 0.9) {
+      insights.push({
+        type: 'warning',
+        title: 'キャンペーン予算アラート',
+        description: `キャンペーン「${campaign.name}」の予算消化率が${Math.round((campaign.spent / campaign.budget) * 100)}%に達しています。`,
+      });
+    }
+  });
+
+  return insights;
 }
 
 export async function getPublisherInsights(publisherId: number): Promise<Insight[]> {
