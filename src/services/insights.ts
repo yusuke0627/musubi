@@ -98,56 +98,6 @@ export async function getAdminInsights(): Promise<Insight[]> {
     });
   }
 
-  // Issue #64: Admin Anomaly Detection
-  // 1. High IVT Rate (Last 24h)
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const totalClicksLast24h = await prisma.click.count({ where: { created_at: { gte: yesterday } } });
-  const invalidClicksLast24h = await prisma.click.count({ where: { created_at: { gte: yesterday }, is_valid: 0, processed: 1 } });
-  
-  if (totalClicksLast24h >= 50 && (invalidClicksLast24h / totalClicksLast24h) > 0.2) {
-    insights.push({
-      type: 'error',
-      title: 'High Network IVT Rate',
-      description: `Abnormal IVT rate detected: ${Math.round((invalidClicksLast24h / totalClicksLast24h) * 100)}% of clicks in the last 24h are invalid.`,
-    });
-  }
-
-  // 2. Low Balance Advertisers
-  const lowBalanceAdsCount = await prisma.advertiser.count({ where: { balance: { lt: 1000 } } });
-  if (lowBalanceAdsCount > 0) {
-    insights.push({
-      type: 'warning',
-      title: 'Advertiser Balance Alert',
-      description: `${lowBalanceAdsCount} advertisers have a balance below ¥1,000. Ads for these accounts may stop serving soon.`,
-    });
-  }
-
-  // Issue #65: Admin Network Trends
-  const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-  
-  const [impsLast24h, impsPrev24h, clicksLast24h, clicksPrev24h] = await Promise.all([
-    prisma.impression.count({ where: { created_at: { gte: yesterday } } }),
-    prisma.impression.count({ where: { created_at: { gte: twoDaysAgo, lt: yesterday } } }),
-    prisma.click.count({ where: { created_at: { gte: yesterday }, is_valid: 1 } }),
-    prisma.click.count({ where: { created_at: { gte: twoDaysAgo, lt: yesterday }, is_valid: 1 } }),
-  ]);
-
-  if (impsPrev24h > 100 && (impsLast24h / impsPrev24h) < 0.5) {
-    insights.push({
-      type: 'warning',
-      title: 'Impression Drop Detected',
-      description: `Network impressions have dropped significantly compared to the previous 24h (${impsLast24h} vs ${impsPrev24h}).`,
-    });
-  }
-
-  if (clicksPrev24h > 20 && (clicksLast24h / clicksPrev24h) < 0.5) {
-    insights.push({
-      type: 'warning',
-      title: 'Click Drop Detected',
-      description: `Network clicks have dropped significantly compared to the previous 24h (${clicksLast24h} vs ${clicksPrev24h}).`,
-    });
-  }
-
   return insights;
 }
 
