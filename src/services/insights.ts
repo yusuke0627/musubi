@@ -113,14 +113,14 @@ export async function getAdvertiserInsights(advertiserId: number): Promise<Insig
     }),
     prisma.campaign.findMany({
       where: { advertiser_id: advertiserId },
-      select: { name: true, budget: true, spent: true }
+      select: { id: true, name: true, budget: true, spent: true, daily_budget: true }
     }),
     prisma.advertiser.findUnique({
       where: { id: advertiserId },
       select: { balance: true }
     }),
     prisma.ad.findMany({
-      where: { adGroup: { campaign: { advertiser_id: advertiserId } } },
+      where: { adGroup: { campaign: { advertiser_id: advertiserId } }, status: 'approved' },
       include: {
         _count: {
           select: {
@@ -142,43 +142,81 @@ export async function getAdvertiserInsights(advertiserId: number): Promise<Insig
     });
   }
 
-  // 2. Budget Alerts
-  campaigns.forEach(campaign => {
+  // 2. Budget Alerts (Total and Daily)
+  const now = new Date();
+  const startOfDay = new Date(now.setUTCHours(0, 0, 0, 0));
+
+  for (const campaign of campaigns) {
+    // Total Budget Check
     if (campaign.budget > 0 && (campaign.spent / campaign.budget) >= 0.9) {
       insights.push({
         type: 'warning',
         title: 'キャンペーン予算アラート',
-        description: `キャンペーン「${campaign.name}」の予算消化率が${Math.round((campaign.spent / campaign.budget) * 100)}%に達しています。`,
+        description: `キャンペーン「${campaign.name}」の総予算消化率が${Math.round((campaign.spent / campaign.budget) * 100)}%に達しています。`,
       });
     }
-  });
+
+    // Daily Budget Check
+    if (campaign.daily_budget > 0) {
+      const dailySpent = await prisma.click.aggregate({
+        where: {
+          ad: { adGroup: { campaign_id: campaign.id } },
+          is_valid: 1,
+          created_at: { gte: startOfDay }
+        },
+        _sum: { cost: true }
+      });
+      
+      const currentDailySpent = dailySpent._sum.cost || 0;
+      const dailyUsage = currentDailySpent / campaign.daily_budget;
+
+      if (dailyUsage >= 1.0) {
+        insights.push({
+          type: 'error',
+          title: '日次予算の上限に達しました',
+          description: `キャンペーン「${campaign.name}」の本日分の日次予算を使い切りました。配信が停止されています。`,
+        });
+      } else if (dailyUsage >= 0.9) {
+        insights.push({
+          type: 'warning',
+          title: '日次予算アラート',
+          description: `キャンペーン「${campaign.name}」の日次予算消化率が${Math.round(dailyUsage * 100)}%に達しています。`,
+        });
+      }
+    }
+  }
 
   // Issue #67: Advertiser Anomaly Detection
   // 1. Balance Check
-  if (advertiser && advertiser.balance < 1000) {
-    insights.push({
-      type: 'error',
-      title: 'Insufficient Balance',
-      description: `Your balance is ¥${advertiser.balance.toLocaleString()}. Campaigns will stop when it reaches 0.`,
-    });
-  } else if (advertiser && advertiser.balance < 5000) {
-    insights.push({
-      type: 'warning',
-      title: 'Low Balance',
-      description: `Your balance is ¥${advertiser.balance.toLocaleString()}. Consider topping up soon.`,
-    });
+  if (advertiser) {
+    if (advertiser.balance < 1000) {
+      insights.push({
+        type: 'error',
+        title: '残高不足アラート',
+        description: `広告アカウントの残高が¥${advertiser.balance.toLocaleString()}です。残高が0になると広告配信が完全に停止します。`,
+      });
+    } else if (advertiser.balance < 5000) {
+      insights.push({
+        type: 'warning',
+        title: '残高低下アラート',
+        description: `広告アカウントの残高が少なくなっています（¥${advertiser.balance.toLocaleString()}）。早めのチャージを検討してください。`,
+      });
+    }
   }
 
   // 2. Low CTR Alert (Creative optimization)
   ads.forEach(ad => {
     const imps = ad._count.impressions;
     const clicks = ad._count.clicks;
-    if (imps >= 1000 && (clicks / imps) < 0.001) {
-      insights.push({
-        type: 'info',
-        title: 'Ad Performance Insight',
-        description: `Ad "${ad.title}" has a low CTR (${((clicks / imps) * 100).toFixed(2)}%). Consider updating the creative.`,
-      });
+    if (imps >= 100) { // シードデータに合わせて100回以上に
+      const ctr = clicks / imps;
+      if (ctr < 0.005) { // 0.5%未満
+        insights.push({
+          type: 'info',
+          title: '広告パフォーマンスの改善提案',
+          description: `広告「${ad.title}」のクリック率が低くなっています（${(ctr * 100).toFixed(2)}%）。クリエイティブの更新を検討してください。`,
+        });
+      }
     }
   });
 

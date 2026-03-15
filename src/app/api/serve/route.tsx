@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
 
   // 現在の時刻、曜日、時間を取得
   const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
   const dayOfWeek = now.getDay();
   const hour = now.getHours();
 
@@ -37,8 +38,21 @@ export async function GET(req: NextRequest) {
       JOIN advertisers ON campaigns.advertiser_id = advertisers.id
       WHERE ads.status = 'approved'
         AND advertisers.balance >= ad_groups.max_bid
-        -- キャンペーン予算チェック
-        AND campaigns.spent < campaigns.budget
+        -- キャンペーン予算チェック (Total)
+        AND (campaigns.budget = 0 OR campaigns.spent < campaigns.budget)
+        -- キャンペーン予算チェック (Daily)
+        AND (
+          campaigns.daily_budget = 0 
+          OR (
+            SELECT COALESCE(SUM(cost), 0) 
+            FROM clicks 
+            JOIN ads a2 ON clicks.ad_id = a2.id
+            JOIN ad_groups ag2 ON a2.ad_group_id = ag2.id
+            WHERE ag2.campaign_id = campaigns.id 
+              AND clicks.is_valid = 1 
+              AND DATE(clicks.created_at) = DATE(${todayStr})
+          ) < campaigns.daily_budget
+        )
         AND (ad_groups.target_device = 'all' OR ad_groups.target_device = ${currentDevice})
         -- 配信先チェック (is_all_publishers または 中間テーブルに存在するか)
         AND (

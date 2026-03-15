@@ -65,4 +65,23 @@ describe('Billing Service', () => {
     expect(click?.is_valid).toBe(0);
     expect(click?.invalid_reason).toBe('Insufficient advertiser balance');
   });
+
+  it('should invalidate click if daily budget is exceeded', async () => {
+    // Set daily budget very low
+    await prisma.campaign.update({
+      where: { id: 1 },
+      data: { daily_budget: 50 } // Max bid is 100
+    });
+
+    await prisma.click.create({
+      data: { ad_id: 1, publisher_id: 1, ip_address: '1.1.1.1', processed: 0 }
+    });
+
+    const processed = await runBillingWorker();
+    expect(processed).toBe(1);
+
+    const click = await prisma.click.findFirst();
+    expect(click?.is_valid).toBe(0);
+    expect(click?.invalid_reason).toBe('Daily budget exceeded');
+  });
 });
