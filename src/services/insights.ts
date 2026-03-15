@@ -21,30 +21,54 @@ export async function getAdminInsights(): Promise<Insight[]> {
   if (pendingAds > 0) {
     insights.push({
       type: 'info',
-      title: 'Ads Awaiting Review',
-      description: `There are ${pendingAds} new ads that need to be reviewed.`,
+      title: '審査待ちの広告',
+      description: `${pendingAds}件の新しい広告が審査を待っています。`,
       link: '#pending-ads',
-      linkLabel: 'Review Ads'
+      linkLabel: '広告を審査する'
     });
   }
 
   if (pendingPayouts > 0) {
     insights.push({
       type: 'warning',
-      title: 'Pending Payouts',
-      description: `There are ${pendingPayouts} payout requests waiting for processing.`,
+      title: '保留中の支払いリクエスト',
+      description: `${pendingPayouts}件の支払いリクエストが処理を待っています。`,
       link: '#pending-payouts',
-      linkLabel: 'Process Payouts'
+      linkLabel: '支払いを処理する'
     });
   }
 
   if (unprocessedClicks > 0) {
     insights.push({
       type: 'info',
-      title: 'Unprocessed Clicks',
-      description: `There are ${unprocessedClicks} clicks waiting for the billing worker.`,
+      title: '未処理のクリック',
+      description: `${unprocessedClicks}件のクリックが請求処理を待っています。`,
       link: '#pending-clicks',
-      linkLabel: 'Process Clicks'
+      linkLabel: 'クリックを処理する'
+    });
+  }
+
+  // Issue #64: Admin Anomaly Detection
+  // 1. High IVT Rate (Last 24h)
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const totalClicksLast24h = await prisma.click.count({ where: { created_at: { gte: yesterday } } });
+  const invalidClicksLast24h = await prisma.click.count({ where: { created_at: { gte: yesterday }, is_valid: 0, processed: 1 } });
+  
+  if (totalClicksLast24h >= 50 && (invalidClicksLast24h / totalClicksLast24h) > 0.2) {
+    insights.push({
+      type: 'error',
+      title: 'ネットワーク全体のIVT率上昇',
+      description: `異常なIVT率が検知されました。過去24時間のクリックの${Math.round((invalidClicksLast24h / totalClicksLast24h) * 100)}%が無効です。`,
+    });
+  }
+
+  // 2. Low Balance Advertisers
+  const lowBalanceAdsCount = await prisma.advertiser.count({ where: { balance: { lt: 1000 } } });
+  if (lowBalanceAdsCount > 0) {
+    insights.push({
+      type: 'warning',
+      title: '広告主の残高アラート',
+      description: `${lowBalanceAdsCount}社の広告主の残高が1,000円を下回っています。これらのアカウントの広告配信がまもなく停止する可能性があります。`,
     });
   }
 
