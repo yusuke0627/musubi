@@ -72,6 +72,32 @@ export async function getAdminInsights(): Promise<Insight[]> {
     });
   }
 
+  // Issue #65: Admin Network Trends
+  const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  
+  const [impsLast24h, impsPrev24h, clicksLast24h, clicksPrev24h] = await Promise.all([
+    prisma.impression.count({ where: { created_at: { gte: yesterday } } }),
+    prisma.impression.count({ where: { created_at: { gte: twoDaysAgo, lt: yesterday } } }),
+    prisma.click.count({ where: { created_at: { gte: yesterday }, is_valid: 1 } }),
+    prisma.click.count({ where: { created_at: { gte: twoDaysAgo, lt: yesterday }, is_valid: 1 } }),
+  ]);
+
+  if (impsPrev24h > 100 && (impsLast24h / impsPrev24h) < 0.5) {
+    insights.push({
+      type: 'warning',
+      title: 'インプレッション数の急減',
+      description: `ネットワーク全体のインプレッション数が前日と比較して大幅に減少しています（${impsLast24h} vs ${impsPrev24h}）。配信システムに異常がないか確認してください。`,
+    });
+  }
+
+  if (clicksPrev24h > 20 && (clicksLast24h / clicksPrev24h) < 0.5) {
+    insights.push({
+      type: 'warning',
+      title: '有効クリック数の急減',
+      description: `ネットワーク全体の有効クリック数が前日と比較して大幅に減少しています（${clicksLast24h} vs ${clicksPrev24h}）。広告の有効性や計測システムを確認してください。`,
+    });
+  }
+
   return insights;
 }
 

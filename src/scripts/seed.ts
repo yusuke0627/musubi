@@ -232,7 +232,36 @@ async function seed() {
   }
   await prisma.click.createMany({ data: recentClicks });
 
-  // 13. Final Balances Update
+  // 14. Network Trends Data for Admin Insights (Issue #65)
+  console.log('📉 Adding network trend data (Drops)...');
+  const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  // Previous 24h (Lots of activity)
+  for (let i = 0; i < 200; i++) {
+    await prisma.impression.create({
+      data: { ad_id: 1, publisher_id: 1, user_agent: '...', ip_address: '1.1.1.1', created_at: new Date(twoDaysAgo.getTime() + (i * 5 * 60 * 1000)) }
+    });
+  }
+  for (let i = 0; i < 40; i++) {
+    await prisma.click.create({
+      data: { ad_id: 1, publisher_id: 1, campaign_id: 1, cost: 0, is_valid: 1, processed: 1, created_at: new Date(twoDaysAgo.getTime() + (i * 20 * 60 * 1000)) }
+    });
+  }
+
+  // Current 24h (Very low activity)
+  for (let i = 0; i < 20; i++) {
+    await prisma.impression.create({
+      data: { ad_id: 1, publisher_id: 1, user_agent: '...', ip_address: '1.1.1.2', created_at: new Date(yesterday.getTime() + (i * 60 * 60 * 1000)) }
+    });
+  }
+  for (let i = 0; i < 5; i++) {
+    await prisma.click.create({
+      data: { ad_id: 1, publisher_id: 1, campaign_id: 1, cost: 0, is_valid: 1, processed: 1, created_at: new Date(yesterday.getTime() + (i * 4 * 60 * 60 * 1000)) }
+    });
+  }
+
+  // 15. Final Balances Update
   await prisma.publisher.update({
     where: { id: 1 },
     data: { balance: { increment: 1500 }, total_earnings: { increment: 10000 } }
