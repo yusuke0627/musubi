@@ -122,6 +122,32 @@ export async function getAdminInsights(): Promise<Insight[]> {
     });
   }
 
+  // Issue #65: Admin Network Trends
+  const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  
+  const [impsLast24h, impsPrev24h, clicksLast24h, clicksPrev24h] = await Promise.all([
+    prisma.impression.count({ where: { created_at: { gte: yesterday } } }),
+    prisma.impression.count({ where: { created_at: { gte: twoDaysAgo, lt: yesterday } } }),
+    prisma.click.count({ where: { created_at: { gte: yesterday }, is_valid: 1 } }),
+    prisma.click.count({ where: { created_at: { gte: twoDaysAgo, lt: yesterday }, is_valid: 1 } }),
+  ]);
+
+  if (impsPrev24h > 100 && (impsLast24h / impsPrev24h) < 0.5) {
+    insights.push({
+      type: 'warning',
+      title: 'Impression Drop Detected',
+      description: `Network impressions have dropped significantly compared to the previous 24h (${impsLast24h} vs ${impsPrev24h}).`,
+    });
+  }
+
+  if (clicksPrev24h > 20 && (clicksLast24h / clicksPrev24h) < 0.5) {
+    insights.push({
+      type: 'warning',
+      title: 'Click Drop Detected',
+      description: `Network clicks have dropped significantly compared to the previous 24h (${clicksLast24h} vs ${clicksPrev24h}).`,
+    });
+  }
+
   return insights;
 }
 
