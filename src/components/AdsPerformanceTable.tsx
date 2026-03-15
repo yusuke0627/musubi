@@ -131,7 +131,7 @@ export default function AdsPerformanceTable({ ads, adGroups, advertiserId }: Ads
               <tr key={ad.id} className="hover:bg-gray-50 transition-colors text-sm">
                 <td className="px-6 py-4 sticky left-0 bg-white z-10 border-r border-gray-100 group">
                   <div className="flex items-center min-w-[200px]">
-                    <img src={ad.image_url || ''} className="w-12 h-10 object-cover rounded border border-gray-100 mr-3 shadow-sm" alt="" />
+                    <img src={ad.image_url ?? undefined} className="w-12 h-10 object-cover rounded border border-gray-100 mr-3 shadow-sm" alt="" />
                     <div>
                       <div className="text-sm font-bold text-gray-900 leading-none mb-1">{ad.title}</div>
                       <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">ID: {ad.id}</div>
