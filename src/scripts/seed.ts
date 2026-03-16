@@ -14,7 +14,7 @@ const IMAGES = [
 ];
 
 async function seed() {
-  console.log('🌟 Seeding the ultimate "Alive" Ad Network dataset...');
+  console.log('🌟 Seeding for Branch Coverage (UI Test Data)...');
 
   // 1. Clear everything
   await prisma.$transaction([
@@ -33,23 +33,24 @@ async function seed() {
 
   const passwordHash = bcrypt.hashSync('password123', 10);
 
-  // 2. Advertisers
-  const advertisersData = [
-    { id: 1, name: 'Bandai Character Shop', balance: 1500000 },
-    { id: 2, name: 'Small Startup', balance: 800 }, // Low Balance Alert
-    { id: 3, name: 'Fashion ODM', balance: 200000 },
+  // 2. Advertisers (Triggering balance branches)
+  const advertisers = [
+    { id: 1, name: 'Healthy Corp (Normal)', balance: 500000 },
+    { id: 2, name: 'Struggling Shop (Warning: <5000)', balance: 3500 },
+    { id: 3, name: 'Broke Startup (Error: <1000)', balance: 450 },
   ];
-  for (const a of advertisersData) {
-    await prisma.advertiser.create({ data: { id: a.id, name: a.name, balance: a.balance } });
+  for (const a of advertisers) {
+    await prisma.advertiser.create({ data: a });
     await prisma.user.create({ data: { email: `adv${a.id}@example.com`, password_hash: passwordHash, role: 'advertiser', linked_id: a.id } });
   }
 
-  // 3. Publishers
-  const publishersData = [
-    { id: 1, name: 'Anime News Portal', domain: 'animenews.com', rev_share: 0.7, balance: 125000 },
-    { id: 2, name: 'Gaming Hub', domain: 'gamerhub.jp', rev_share: 0.8, balance: 45000 },
+  // 3. Publishers (Triggering trend branches)
+  const publishers = [
+    { id: 1, name: 'Growth Media (Up Trend)', domain: 'growth.com', rev_share: 0.7, balance: 80000 },
+    { id: 2, name: 'Declining Blog (Down Trend)', domain: 'decline.jp', rev_share: 0.8, balance: 15000 },
+    { id: 3, name: 'New Publisher (No stats)', domain: 'new.net', rev_share: 0.6, balance: 0 },
   ];
-  for (const p of publishersData) {
+  for (const p of publishers) {
     await prisma.publisher.create({ data: p });
     await prisma.user.create({ data: { email: `pub${p.id}@example.com`, password_hash: passwordHash, role: 'publisher', linked_id: p.id } });
   }
@@ -57,26 +58,42 @@ async function seed() {
   // 4. Admin
   await prisma.user.create({ data: { email: 'admin@adnetwork.local', password_hash: passwordHash, role: 'admin' } });
 
-  // 5. Campaigns, AdGroups, Ads
-  await prisma.campaign.create({ data: { id: 1, advertiser_id: 1, name: 'Chiikawa Festival', budget: 1000000, daily_budget: 50000, spent: 450000 } });
-  await prisma.adGroup.create({ data: { id: 1, campaign_id: 1, name: 'Main Visual', max_bid: 150 } });
-  
-  // Approved Ads
-  await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'ちいかわマーケットOPEN!', image_url: IMAGES[0], target_url: 'https://ex.com/1', status: 'approved' } });
-  await prisma.ad.create({ data: { id: 2, ad_group_id: 1, title: 'ハチワレのぬいぐるみ予約中', image_url: IMAGES[1], target_url: 'https://ex.com/2', status: 'approved' } });
-  
-  // Pending Ads (Review Queue)
-  await prisma.ad.create({ data: { id: 3, ad_group_id: 1, title: '【新商品】うさぎのキーホルダー', image_url: IMAGES[2], target_url: 'https://ex.com/3', status: 'pending' } });
-  await prisma.ad.create({ data: { id: 4, ad_group_id: 1, title: 'モモンガのクッション', image_url: IMAGES[3], target_url: 'https://ex.com/4', status: 'pending' } });
+  // 5. Campaigns (Triggering budget branches)
+  const campaigns = [
+    { id: 1, advertiser_id: 1, name: 'Normal Campaign', budget: 100000, spent: 10000, daily_budget: 0 },
+    { id: 2, advertiser_id: 1, name: 'Total Budget Warning (>90%)', budget: 50000, spent: 96000, daily_budget: 0 }, // Wait, spent > budget is Error
+    { id: 3, advertiser_id: 1, name: 'Total Budget Error (Exceeded)', budget: 20000, spent: 25000, daily_budget: 0 },
+    { id: 4, advertiser_id: 1, name: 'Daily Budget Warning (>90%)', budget: 500000, daily_budget: 1000, spent: 5000 },
+    { id: 5, advertiser_id: 1, name: 'Daily Budget Error (Exceeded)', budget: 500000, daily_budget: 500, spent: 5000 },
+    { id: 6, advertiser_id: 1, name: 'Low CTR Campaign (Anomaly)', budget: 100000, spent: 1000, daily_budget: 0 },
+  ];
+  // Correcting ID 2 to be exactly Warning
+  campaigns[1].spent = campaigns[1].budget * 0.95;
 
-  // Campaign for Anomaly
-  await prisma.campaign.create({ data: { id: 2, advertiser_id: 1, name: 'Ghost Campaign', budget: 100000, spent: 5000 } });
-  await prisma.adGroup.create({ data: { id: 2, campaign_id: 2, name: 'Unpopular Group', max_bid: 50 } });
-  await prisma.ad.create({ data: { id: 5, ad_group_id: 2, title: '誰もクリックしない広告', image_url: IMAGES[6], target_url: 'https://ex.com/5', status: 'approved' } });
+  for (const c of campaigns) {
+    await prisma.campaign.create({ data: c });
+  }
 
-  // 6. Generate Bustling Historical Data (Last 7 Days)
-  console.log('📈 Generating complex time-series data...');
+  // 6. Ad Groups
+  for (const c of campaigns) {
+    await prisma.adGroup.create({ data: { id: c.id, campaign_id: c.id, name: `${c.name} Group`, max_bid: 100 } });
+  }
+
+  // 7. Ads (Triggering status branches)
+  const ads = [
+    { id: 1, ad_group_id: 1, title: 'Approved Ad (Chiikawa)', status: 'approved', image_url: IMAGES[0], target_url: 'https://ex.com/1' },
+    { id: 2, ad_group_id: 1, title: 'Pending Ad (Review Required)', status: 'pending', image_url: IMAGES[1], target_url: 'https://ex.com/2' },
+    { id: 3, ad_group_id: 1, title: 'Rejected Ad (Policy Violation)', status: 'rejected', rejection_reason: '画像の著作権侵害の疑いがあります。', image_url: IMAGES[2], target_url: 'https://ex.com/3' },
+    { id: 4, ad_group_id: 6, title: 'Low CTR Ad (Ghost)', status: 'approved', image_url: IMAGES[6], target_url: 'https://ex.com/4' },
+  ];
+  for (const ad of ads) {
+    await prisma.ad.create({ data: ad });
+  }
+
   const now = new Date();
+
+  // 8. Historical Data Generation
+  console.log('📈 Generating performance data for trend analysis...');
   
   for (let i = 0; i < 7; i++) {
     const date = new Date(now);
@@ -84,61 +101,77 @@ async function seed() {
     date.setUTCHours(12, 0, 0, 0);
 
     const isToday = i === 6;
-    const baseCount = (i + 1) * 50; // Increasing trend
 
-    for (const pub of publishersData) {
-      const impsCount = baseCount + Math.floor(Math.random() * 20);
-      const clicksCount = Math.floor(impsCount * 0.1);
+    // Publisher 1: Increasing Trend (Up Arrow)
+    const pub1Count = (i + 1) * 100;
+    await prisma.impression.createMany({ data: Array.from({ length: pub1Count }).map(() => ({ ad_id: 1, publisher_id: 1, created_at: date })) });
+    for (let j = 0; j < Math.floor(pub1Count * 0.1); j++) {
+      await prisma.click.create({ data: { ad_id: 1, publisher_id: 1, campaign_id: 1, cost: 100, publisher_earnings: 70, is_valid: 1, processed: 1, created_at: date } });
+    }
 
-      // Create Impressions
-      await prisma.impression.createMany({
-        data: Array.from({ length: impsCount }).map(() => ({
-          ad_id: 1, publisher_id: pub.id, user_agent: 'Mozilla/5.0...', ip_address: '127.0.0.1', created_at: date
-        }))
-      });
+    // Publisher 2: Decreasing Trend (Down Arrow)
+    const pub2Count = (7 - i) * 100;
+    await prisma.impression.createMany({ data: Array.from({ length: pub2Count }).map(() => ({ ad_id: 1, publisher_id: 2, created_at: date })) });
+    for (let j = 0; j < Math.floor(pub2Count * 0.1); j++) {
+      await prisma.click.create({ data: { ad_id: 1, publisher_id: 2, campaign_id: 1, cost: 100, publisher_earnings: 80, is_valid: 1, processed: 1, created_at: date } });
+    }
 
-      // Create Valid, Processed Clicks (Historical & Today's baseline)
-      for (let j = 0; j < clicksCount; j++) {
-        const cost = 150;
-        const earnings = cost * pub.rev_share;
-        await prisma.click.create({
-          data: {
-            ad_id: 1, publisher_id: pub.id, campaign_id: 1, cost, publisher_earnings: earnings,
-            is_valid: 1, processed: 1, created_at: date
-          }
-        });
+    // Ad 4: Low CTR Anomaly
+    await prisma.impression.createMany({ data: Array.from({ length: 500 }).map(() => ({ ad_id: 4, publisher_id: 1, created_at: date })) });
+    // Only 1 click for 500 imps (0.2% CTR)
+    await prisma.click.create({ data: { ad_id: 4, publisher_id: 1, campaign_id: 6, cost: 50, publisher_earnings: 35, is_valid: 1, processed: 1, created_at: date } });
+
+    // Daily Budget Logic for Today
+    if (isToday) {
+      // Campaign 4: Daily Warning (950 / 1000)
+      for (let j = 0; j < 19; j++) {
+        await prisma.click.create({ data: { ad_id: 1, publisher_id: 3, campaign_id: 4, cost: 50, publisher_earnings: 30, is_valid: 1, processed: 1, created_at: date } });
       }
-
-      // Low CTR Anomaly Data
-      await prisma.impression.createMany({
-        data: Array.from({ length: 200 }).map(() => ({
-          ad_id: 5, publisher_id: pub.id, user_agent: '...', ip_address: '127.0.0.1', created_at: date
-        }))
-      });
+      // Campaign 5: Daily Error (1100 / 500)
+      for (let j = 0; j < 11; j++) {
+        await prisma.click.create({ data: { ad_id: 1, publisher_id: 3, campaign_id: 5, cost: 100, publisher_earnings: 60, is_valid: 1, processed: 1, created_at: date } });
+      }
     }
   }
 
-  // 7. Click Validation Queue (Unprocessed Clicks)
-  console.log('💰 Adding unprocessed clicks for validation queue...');
+  // 9. Admin Queue Data (Branch: Has Pending Items)
+  console.log('💰 Adding queue items for admin workflow coverage...');
   await prisma.click.createMany({
     data: [
-      { ad_id: 1, publisher_id: 1, user_agent: 'Mozilla/5.0...', ip_address: '192.168.1.100', processed: 0, created_at: now },
-      { ad_id: 2, publisher_id: 2, user_agent: 'Mozilla/5.0...', ip_address: '192.168.1.101', processed: 0, created_at: now },
-      { ad_id: 1, publisher_id: 1, user_agent: 'Bot/1.0', ip_address: '10.0.0.50', processed: 0, created_at: now },
+      { ad_id: 1, publisher_id: 1, processed: 0, created_at: now },
+      { ad_id: 1, publisher_id: 2, processed: 0, created_at: now },
     ]
   });
 
-  // 8. Payout Requests Queue (Pending Payouts)
-  console.log('💸 Adding pending payout requests...');
   await prisma.payout.createMany({
     data: [
-      { publisher_id: 1, amount: 50000, status: 'pending', created_at: now },
-      { publisher_id: 2, amount: 15000, status: 'pending', created_at: now },
-      { publisher_id: 1, amount: 25000, status: 'paid', created_at: new Date(now.getTime() - 86400000 * 5), paid_at: new Date(now.getTime() - 86400000 * 4) },
+      { publisher_id: 1, amount: 5000, status: 'pending', created_at: now },
+      { publisher_id: 2, amount: 12000, status: 'paid', created_at: new Date(now.getTime() - 86400000), paid_at: now },
     ]
   });
 
-  console.log('✅ "Alive" dataset seeded successfully!');
+  // 10. Admin Anomaly: High IVT Rate (Branch: >20%)
+  console.log('🚨 Generating High IVT anomaly...');
+  for (let i = 0; i < 50; i++) {
+    const isValid = i < 10; // 80% IVT
+    await prisma.click.create({
+      data: {
+        ad_id: 1, publisher_id: 3, cost: 0, is_valid: isValid ? 1 : 0, processed: 1, 
+        invalid_reason: isValid ? null : 'Suspicious traffic', user_agent: 'Bot/1.0', created_at: now
+      }
+    });
+  }
+
+  // 11. Admin Anomaly: Network Drop (Branch: <50% of prev 24h)
+  console.log('📉 Generating Network Drop anomaly...');
+  const yesterday = new Date(now.getTime() - 86400000);
+  const twoDaysAgo = new Date(now.getTime() - 172800000);
+  // Previous 24h: High activity
+  await prisma.impression.createMany({ data: Array.from({ length: 500 }).map(() => ({ ad_id: 1, publisher_id: 1, created_at: twoDaysAgo })) });
+  // Current 24h: Low activity (triggered drop alert)
+  await prisma.impression.createMany({ data: Array.from({ length: 50 }).map(() => ({ ad_id: 1, publisher_id: 1, created_at: yesterday })) });
+
+  console.log('✅ Branch Coverage Seeding completed!');
 }
 
 seed()
