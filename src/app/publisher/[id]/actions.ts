@@ -9,6 +9,38 @@ const PayoutRequestSchema = z.object({
   publisher_id: z.coerce.number().int().positive(),
 });
 
+const ProfileUpdateSchema = z.object({
+  publisher_id: z.coerce.number().int().positive(),
+  category: z.string().optional().nullable().transform(v => v === "" ? null : v),
+});
+
+export async function updatePublisherProfile(formData: FormData) {
+  const data = Object.fromEntries(formData.entries());
+  const parsed = ProfileUpdateSchema.safeParse(data);
+
+  if (!parsed.success) {
+    console.error(parsed.error.issues);
+    return { success: false, error: "Invalid profile data" };
+  }
+
+  const { publisher_id, category } = parsed.data;
+  const session = await auth();
+  const user = session?.user as any;
+
+  // Authorization check
+  if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== publisher_id)) {
+    return { success: false, error: "Forbidden: Access denied" };
+  }
+
+  await prisma.publisher.update({
+    where: { id: publisher_id },
+    data: { category }
+  });
+
+  revalidatePath(`/publisher/${publisher_id}`);
+  return { success: true };
+}
+
 export async function requestPayout(formData: FormData) {
   const data = Object.fromEntries(formData.entries());
   const parsed = PayoutRequestSchema.safeParse(data);

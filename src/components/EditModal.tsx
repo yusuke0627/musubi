@@ -82,6 +82,17 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data, c
                 <input type="number" name="max_bid" defaultValue={data.max_bid} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-100 text-slate-900 font-medium font-mono" required />
               </div>
               <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Target Category</label>
+                <select name="target_category" defaultValue={data.target_category || ""} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-100 bg-white text-slate-900 font-medium">
+                  <option value="">Any Category</option>
+                  <option value="anime">Anime & Manga</option>
+                  <option value="game">Games</option>
+                  <option value="tech">Technology</option>
+                  <option value="lifestyle">Lifestyle</option>
+                  <option value="business">Business</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Target Device</label>
                 <div className="flex gap-4">
                   {['all', 'desktop', 'mobile'].map(d => (

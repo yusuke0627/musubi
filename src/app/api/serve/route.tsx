@@ -36,8 +36,15 @@ export async function GET(req: NextRequest) {
       JOIN ad_groups ON ads.ad_group_id = ad_groups.id
       JOIN campaigns ON ad_groups.campaign_id = campaigns.id
       JOIN advertisers ON campaigns.advertiser_id = advertisers.id
+      JOIN publishers ON publishers.id = ${publisherId}
       WHERE ads.status = 'approved'
         AND advertisers.balance >= ad_groups.max_bid
+        -- カテゴリマッチング
+        AND (
+          ad_groups.target_category IS NULL 
+          OR ad_groups.target_category = ''
+          OR ad_groups.target_category = publishers.category
+        )
         -- キャンペーン予算チェック (Total)
         AND (campaigns.budget = 0 OR campaigns.spent < campaigns.budget)
         -- キャンペーン予算チェック (Daily)

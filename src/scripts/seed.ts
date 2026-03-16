@@ -46,9 +46,9 @@ async function seed() {
 
   // 3. Publishers (Triggering trend branches)
   const publishers = [
-    { id: 1, name: 'Growth Media (Up Trend)', domain: 'growth.com', rev_share: 0.7, balance: 80000 },
-    { id: 2, name: 'Declining Blog (Down Trend)', domain: 'decline.jp', rev_share: 0.8, balance: 15000 },
-    { id: 3, name: 'New Publisher (No stats)', domain: 'new.net', rev_share: 0.6, balance: 0 },
+    { id: 1, name: 'Growth Media (Up Trend)', domain: 'growth.com', rev_share: 0.7, balance: 80000, category: 'anime' },
+    { id: 2, name: 'Declining Blog (Down Trend)', domain: 'decline.jp', rev_share: 0.8, balance: 15000, category: 'game' },
+    { id: 3, name: 'New Publisher (No stats)', domain: 'new.net', rev_share: 0.6, balance: 0, category: 'tech' },
   ];
   for (const p of publishers) {
     await prisma.publisher.create({ data: p });
@@ -75,8 +75,17 @@ async function seed() {
   }
 
   // 6. Ad Groups
+  const categories = [null, 'anime', 'game', 'tech', 'lifestyle', 'business'];
   for (const c of campaigns) {
-    await prisma.adGroup.create({ data: { id: c.id, campaign_id: c.id, name: `${c.name} Group`, max_bid: 100 } });
+    await prisma.adGroup.create({ 
+      data: { 
+        id: c.id, 
+        campaign_id: c.id, 
+        name: `${c.name} Group`, 
+        max_bid: 100,
+        target_category: categories[c.id - 1] || null
+      } 
+    });
   }
 
   // 7. Ads (Triggering status branches)

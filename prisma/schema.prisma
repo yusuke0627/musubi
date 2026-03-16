@@ -23,6 +23,7 @@ model Publisher {
   id             Int                        @id @default(autoincrement())
   name           String
   domain         String
+  category       String?
   balance        Float                      @default(0)
   total_earnings Float                      @default(0)
   rev_share      Float                      @default(0.7)
@@ -90,6 +91,7 @@ model AdGroup {
   name              String
   max_bid           Float                      @default(10)
   target_device     String                     @default("all")
+  target_category   String?
   is_all_publishers Int                        @default(1) // 1: All, 0: Specific
   campaign          Campaign                   @relation(fields: [campaign_id], references: [id])
   schedules         AdSchedule[]

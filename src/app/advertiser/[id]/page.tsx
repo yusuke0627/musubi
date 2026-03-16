@@ -199,9 +199,22 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
                 <label className="block text-sm font-bold text-gray-700 mb-1">Group Name</label>
                 <input type="text" name="name" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-100 outline-none" placeholder="e.g. Mobile Users" required />
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Max Bid (¥)</label>
-                <input type="number" name="max_bid" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-100 outline-none" placeholder="50" required />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Max Bid (¥)</label>
+                  <input type="number" name="max_bid" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-100 outline-none" placeholder="50" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Target Category</label>
+                  <select name="target_category" className="w-full p-2 border border-gray-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-emerald-100">
+                    <option value="">Any Category</option>
+                    <option value="anime">Anime & Manga</option>
+                    <option value="game">Games</option>
+                    <option value="tech">Technology</option>
+                    <option value="lifestyle">Lifestyle</option>
+                    <option value="business">Business</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-wider font-black text-gray-400 mb-2">Target Device</label>

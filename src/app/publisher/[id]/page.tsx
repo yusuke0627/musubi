@@ -3,7 +3,7 @@ import { getDailyStats } from "@/services/stats";
 import Link from "next/link";
 import { notFound, forbidden } from "next/navigation";
 import StatsChart from "@/components/StatsChart";
-import { requestPayout } from "./actions";
+import { requestPayout, updatePublisherProfile } from "./actions";
 import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
@@ -88,8 +88,38 @@ export default async function PublisherDashboard({ params }: PageProps) {
         </section>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          {/* Payout Section */}
+          {/* Profile Settings & Payout */}
           <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">Profile Settings</h2>
+            <form action={async (formData) => {
+              "use server";
+              await updatePublisherProfile(formData);
+            }} className="flex flex-col gap-4 mb-8">
+              <input type="hidden" name="publisher_id" value={publisher.id} />
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Publisher Category</label>
+                <p className="text-xs text-gray-500 mb-2">広告のコンテキストマッチングに使用されます。あなたのサイトの主ジャンルを選んでください。</p>
+                <select 
+                  name="category" 
+                  defaultValue={publisher.category || ""}
+                  className="w-full p-2 border border-gray-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-emerald-100 text-slate-900 font-medium"
+                >
+                  <option value="">Any Category</option>
+                  <option value="anime">Anime & Manga</option>
+                  <option value="game">Games</option>
+                  <option value="tech">Technology</option>
+                  <option value="lifestyle">Lifestyle</option>
+                  <option value="business">Business</option>
+                </select>
+              </div>
+              <button
+                type="submit"
+                className="w-full py-2 px-4 rounded-lg font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-colors"
+              >
+                Save Settings
+              </button>
+            </form>
+
             <h2 className="text-xl font-bold mb-4 text-gray-800">Payout</h2>
             <div className="bg-gray-50 p-4 rounded-lg flex flex-col gap-4">
               <div>
