@@ -2,7 +2,7 @@ import prisma from '../lib/db';
 
 export async function getDailyStats(filter: { advertiserId?: string, publisherId?: string } = {}) {
   const days = 7;
-  const stats: { date: string, impressions: number, clicks: number }[] = [];
+  const stats: { date: string, impressions: number, clicks: number, earnings: number }[] = [];
   
   // Generate last 7 days in UTC
   for (let i = days - 1; i >= 0; i--) {
@@ -12,7 +12,8 @@ export async function getDailyStats(filter: { advertiserId?: string, publisherId
     stats.push({
       date: dateStr,
       impressions: 0,
-      clicks: 0
+      clicks: 0,
+      earnings: 0
     });
   }
 
@@ -53,7 +54,7 @@ export async function getDailyStats(filter: { advertiserId?: string, publisherId
         }
       } : undefined
     },
-    select: { created_at: true }
+    select: { created_at: true, cost: true, publisher_earnings: true }
   });
 
   // Group in JS
@@ -66,7 +67,11 @@ export async function getDailyStats(filter: { advertiserId?: string, publisherId
   clicks.forEach(click => {
     const dateStr = click.created_at.toISOString().split('T')[0];
     const entry = stats.find(s => s.date === dateStr);
-    if (entry) entry.clicks++;
+    if (entry) {
+      entry.clicks++;
+      // If filtering by publisher, show their earnings. If by advertiser, show their cost.
+      entry.earnings += pubId ? click.publisher_earnings : click.cost;
+    }
   });
 
   return stats;

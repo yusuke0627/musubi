@@ -42,6 +42,14 @@ export default async function PublisherDashboard({ params }: PageProps) {
   });
   const dailyStats = await getDailyStats({ publisherId: id.toString() }) as any[];
 
+  // トレンド計算 (昨日 vs 今日)
+  const todayStats = dailyStats[dailyStats.length - 1];
+  const yesterdayStats = dailyStats[dailyStats.length - 2];
+  const todayEarnings = todayStats?.earnings || 0;
+  const yesterdayEarnings = yesterdayStats?.earnings || 0;
+  const earningsDiff = todayEarnings - yesterdayEarnings;
+  const earningsTrend = yesterdayEarnings > 0 ? (earningsDiff / yesterdayEarnings) * 100 : 0;
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-5xl mx-auto">
@@ -50,18 +58,27 @@ export default async function PublisherDashboard({ params }: PageProps) {
           <Link href="/" className="text-blue-600 hover:underline">← Back to Portal</Link>
         </header>
 
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Impressions</h3>
-            <div className="text-2xl font-bold text-gray-900">{impressionsCount}</div>
+            <div className="text-2xl font-bold text-gray-900">{impressionsCount.toLocaleString()}</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Clicks</h3>
-            <div className="text-2xl font-bold text-gray-900">{clicksCount}</div>
+            <div className="text-2xl font-bold text-gray-900">{clicksCount.toLocaleString()}</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Current Balance</h3>
             <div className="text-2xl font-bold text-emerald-600">¥{publisher.balance.toLocaleString()}</div>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
+            <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Today's Earnings</h3>
+            <div className="text-2xl font-bold text-gray-900">¥{todayEarnings.toLocaleString()}</div>
+            {yesterdayEarnings > 0 && (
+              <div className={`text-xs font-bold mt-1 ${earningsDiff >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {earningsDiff >= 0 ? '↑' : '↓'} {Math.abs(earningsTrend).toFixed(1)}% vs yesterday
+              </div>
+            )}
           </div>
         </section>
 

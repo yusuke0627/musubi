@@ -111,12 +111,6 @@ export async function runBillingWorker() {
             data: { balance: { decrement: maxBid } }
           });
 
-          // クリック確定
-          await tx.click.update({
-            where: { id: click.id },
-            data: { is_valid: 1, processed: 1, cost: maxBid, campaign_id: campaignId }
-          });
-
           // キャンペーン消化額加算
           await tx.campaign.update({
             where: { id: campaignId },
@@ -129,6 +123,18 @@ export async function runBillingWorker() {
           });
           const revShare = publisher?.rev_share ?? 0.7;
           const payoutAmount = maxBid * revShare;
+
+          // クリック確定 (publisher_earningsを追加)
+          await tx.click.update({
+            where: { id: click.id },
+            data: { 
+              is_valid: 1, 
+              processed: 1, 
+              cost: maxBid, 
+              publisher_earnings: payoutAmount,
+              campaign_id: campaignId 
+            }
+          });
 
           await tx.publisher.update({
             where: { id: click.publisher_id },
