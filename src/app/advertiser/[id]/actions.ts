@@ -29,6 +29,7 @@ const AdGroupSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   max_bid: z.coerce.number().positive("Bid must be greater than 0"),
   target_device: z.enum(["all", "desktop", "mobile"]),
+  target_category: z.string().optional().nullable().transform(v => v === "" ? null : v),
   target_publishers: z.array(z.string()).optional().default([]),
 });
 
@@ -79,7 +80,7 @@ export async function createAdGroup(formData: FormData) {
     throw new Error("Invalid ad group data");
   }
 
-  const { advertiser_id, campaign_id, name, max_bid, target_device, target_publishers } = parsed.data;
+  const { advertiser_id, campaign_id, name, max_bid, target_device, target_category, target_publishers } = parsed.data;
   await checkAuth(advertiser_id);
 
   const isAll = target_publishers.includes('all') || target_publishers.length === 0;
@@ -91,6 +92,7 @@ export async function createAdGroup(formData: FormData) {
         name,
         max_bid,
         target_device,
+        target_category,
         is_all_publishers: isAll ? 1 : 0,
       }
     });
@@ -183,7 +185,7 @@ export async function updateAdGroup(formData: FormData) {
     throw new Error("Invalid ad group data");
   }
 
-  const { advertiser_id, campaign_id, name, max_bid, target_device, target_publishers } = parsed.data;
+  const { advertiser_id, campaign_id, name, max_bid, target_device, target_category, target_publishers } = parsed.data;
   await checkAuth(advertiser_id);
 
   const isAll = target_publishers.includes('all') || target_publishers.length === 0;
@@ -196,6 +198,7 @@ export async function updateAdGroup(formData: FormData) {
         name,
         max_bid,
         target_device,
+        target_category,
         is_all_publishers: isAll ? 1 : 0,
       }
     });

@@ -154,4 +154,49 @@ describe('GET /api/serve', () => {
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
     expect(html).toContain('&quot; onclick=&quot;alert(2)');
   });
+
+  describe('Category Matching', () => {
+    beforeEach(async () => {
+      // Publisher 2 (Anime) and Publisher 3 (Tech)
+      await prisma.publisher.create({ data: { id: 2, name: 'Pub Anime', domain: 'anime.com', category: 'anime' } });
+      await prisma.publisher.create({ data: { id: 3, name: 'Pub Tech', domain: 'tech.com', category: 'tech' } });
+    });
+
+    it('should serve an ad when categories match (Anime)', async () => {
+      await prisma.adGroup.update({ where: { id: 1 }, data: { target_category: 'anime' } });
+
+      const req = new NextRequest('http://localhost/api/serve?publisher_id=2');
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).toContain('Ad 1');
+    });
+
+    it('should NOT serve an ad when categories mismatch (Anime vs Tech)', async () => {
+      await prisma.adGroup.update({ where: { id: 1 }, data: { target_category: 'anime' } });
+
+      const req = new NextRequest('http://localhost/api/serve?publisher_id=3');
+      const res = await GET(req);
+      expect(res.status).toBe(204);
+    });
+
+    it('should serve an ad when target_category is NULL (broad matching)', async () => {
+      await prisma.adGroup.update({ where: { id: 1 }, data: { target_category: null } });
+
+      // Request from Tech publisher
+      const req = new NextRequest('http://localhost/api/serve?publisher_id=3');
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).toContain('Ad 1');
+    });
+
+    it('should serve an ad when target_category is empty string (broad matching)', async () => {
+      await prisma.adGroup.update({ where: { id: 1 }, data: { target_category: '' } });
+
+      const req = new NextRequest('http://localhost/api/serve?publisher_id=2');
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+    });
+  });
 });
