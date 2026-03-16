@@ -139,20 +139,21 @@ model Impression {
 }
 
 model Click {
-  id             Int       @id @default(autoincrement())
-  ad_id          Int
-  publisher_id   Int
-  campaign_id    Int?
-  user_agent     String?
-  ip_address     String?
-  cost           Float     @default(0)
-  is_valid       Int       @default(0)
-  processed      Int       @default(0)
-  invalid_reason String?
-  created_at     DateTime  @default(now())
-  ad             Ad        @relation(fields: [ad_id], references: [id])
-  publisher      Publisher @relation(fields: [publisher_id], references: [id])
-  campaign       Campaign? @relation(fields: [campaign_id], references: [id])
+  id                 Int       @id @default(autoincrement())
+  ad_id              Int
+  publisher_id       Int
+  campaign_id        Int?
+  user_agent         String?
+  ip_address         String?
+  cost               Float     @default(0)
+  publisher_earnings Float     @default(0)
+  is_valid           Int       @default(0)
+  processed          Int       @default(0)
+  invalid_reason     String?
+  created_at         DateTime  @default(now())
+  ad                 Ad        @relation(fields: [ad_id], references: [id])
+  publisher          Publisher @relation(fields: [publisher_id], references: [id])
+  campaign           Campaign? @relation(fields: [campaign_id], references: [id])
 
   @@map("clicks")
 }
