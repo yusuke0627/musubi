@@ -10,6 +10,8 @@ interface AdGroup {
   name: string;
   max_bid: number;
   target_device: string;
+  conversions: number;
+  revenue: number;
 }
 
 interface AdGroupsTableProps {
@@ -32,16 +34,18 @@ export default function AdGroupsTable({ adGroups, campaigns, advertiserId }: AdG
         campaigns={campaigns}
       />
       <div className="p-6 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-800 tracking-tight">Ad Groups</h2>
+        <h2 className="text-xl font-bold text-gray-800 tracking-tight">Ad Groups Performance</h2>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full border-collapse">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Name</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Campaign</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Max Bid</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Device</th>
+              <th className="px-6 py-3 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">Max Bid</th>
+              <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-widest">Device</th>
+              <th className="px-6 py-3 text-right text-xs font-bold text-blue-400 uppercase tracking-widest">CV</th>
+              <th className="px-6 py-3 text-right text-xs font-bold text-emerald-400 uppercase tracking-widest">Revenue</th>
               <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-widest">Actions</th>
             </tr>
           </thead>
@@ -49,16 +53,30 @@ export default function AdGroupsTable({ adGroups, campaigns, advertiserId }: AdG
             {adGroups.map((g) => (
               <tr key={g.id} className="hover:bg-gray-50 transition-colors text-sm">
                 <td className="px-6 py-4 font-bold text-gray-900">{g.name}</td>
-                <td className="px-6 py-4 text-gray-600 italic">{g.campaign_name}</td>
+                <td className="px-6 py-4 text-gray-600 italic text-xs">{g.campaign_name}</td>
                 <td className="px-6 py-4 text-right font-mono font-bold text-slate-700">¥{g.max_bid}</td>
                 <td className="px-6 py-4 text-center">
                   <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-bold uppercase">{g.target_device}</span>
                 </td>
+                <td className="px-6 py-4 text-right font-mono font-bold text-blue-700">
+                  {g.conversions.toLocaleString()}
+                </td>
+                <td className="px-6 py-4 text-right font-mono font-bold text-emerald-700">
+                  ¥{g.revenue.toLocaleString()}
+                </td>
                 <td className="px-6 py-4 text-center">
-                  <button onClick={() => setEditModal({ isOpen: true, data: g })} className="text-blue-600 hover:text-blue-800 font-bold text-[10px] uppercase">Edit</button>
+                  <button 
+                    onClick={() => setEditModal({ isOpen: true, data: g })} 
+                    className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase transition-colors"
+                  >
+                    Edit
+                  </button>
                 </td>
               </tr>
             ))}
+            {adGroups.length === 0 && (
+              <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-400 italic">No ad groups found.</td></tr>
+            )}
           </tbody>
         </table>
       </div>

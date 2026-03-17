@@ -45,19 +45,60 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
   const advertiserInsights = await getAdvertiserInsights(id);
 
   // キャンペーン一覧の取得
-  const campaigns = await prisma.campaign.findMany({
-    where: { advertiser_id: id }
+  const campaignsRaw = await prisma.campaign.findMany({
+    where: { advertiser_id: id },
+    include: {
+      clicks: {
+        where: { is_valid: 1 },
+        select: {
+          conversions: {
+            select: {
+              revenue: true
+            }
+          }
+        }
+      }
+    }
+  });
+  const campaigns = campaignsRaw.map(c => {
+    const conversions = c.clicks.flatMap(cl => cl.conversions);
+    return {
+      ...c,
+      conversions: conversions.length,
+      revenue: conversions.reduce((acc, curr) => acc + curr.revenue, 0)
+    };
   });
   
   // アドグループ一覧の取得 (キャンペーン名を含む)
   const adGroupsRaw = await prisma.adGroup.findMany({
     where: { campaign: { advertiser_id: id } },
-    include: { campaign: { select: { name: true } } }
+    include: { 
+      campaign: { select: { name: true } },
+      ads: {
+        include: {
+          clicks: {
+            where: { is_valid: 1 },
+            select: {
+              conversions: {
+                select: {
+                  revenue: true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   });
-  const adGroups = adGroupsRaw.map(g => ({
-    ...g,
-    campaign_name: g.campaign.name
-  }));
+  const adGroups = adGroupsRaw.map(g => {
+    const conversions = g.ads.flatMap(ad => ad.clicks.flatMap(cl => cl.conversions));
+    return {
+      ...g,
+      campaign_name: g.campaign.name,
+      conversions: conversions.length,
+      revenue: conversions.reduce((acc, curr) => acc + curr.revenue, 0)
+    };
+  });
 
   // 広告成果一覧の取得
   const adsRaw = await prisma.ad.findMany({
@@ -75,24 +116,42 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
             where: { is_valid: 1 }
           }
         }
+      },
+      clicks: {
+        where: { is_valid: 1 },
+        select: {
+          conversions: {
+            select: {
+              revenue: true
+            }
+          }
+        }
       }
     },
     orderBy: { id: 'desc' }
   });
 
-  const ads = adsRaw.map(ad => ({
-    ...ad,
-    group_name: ad.adGroup.name,
-    max_bid: ad.adGroup.max_bid,
-    target_device: ad.adGroup.target_device,
-    campaign_name: ad.adGroup.campaign.name,
-    campaign_id: ad.adGroup.campaign.id,
-    start_date: ad.adGroup.campaign.start_date,
-    end_date: ad.adGroup.campaign.end_date,
-    campaign_budget: ad.adGroup.campaign.budget,
-    impressions: ad._count.impressions,
-    clicks: ad._count.clicks
-  }));
+  const ads = adsRaw.map(ad => {
+    const conversions = ad.clicks.flatMap(c => c.conversions);
+    const cvCount = conversions.length;
+    const cvRevenue = conversions.reduce((acc, curr) => acc + curr.revenue, 0);
+
+    return {
+      ...ad,
+      group_name: ad.adGroup.name,
+      max_bid: ad.adGroup.max_bid,
+      target_device: ad.adGroup.target_device,
+      campaign_name: ad.adGroup.campaign.name,
+      campaign_id: ad.adGroup.campaign.id,
+      start_date: ad.adGroup.campaign.start_date,
+      end_date: ad.adGroup.campaign.end_date,
+      campaign_budget: ad.adGroup.campaign.budget,
+      impressions: ad._count.impressions,
+      clicks: ad._count.clicks,
+      conversions: cvCount,
+      revenue: cvRevenue
+    };
+  });
 
   const dailyStats = await getDailyStats({ advertiserId: id.toString() }) as any[];
   const placementStats = await getPlacementStats(id.toString()) as any[];

@@ -10,9 +10,14 @@ interface Campaign {
   daily_budget: number;
   start_date: string | Date;
   end_date?: string | Date | null;
+  conversions: number;
+  revenue: number;
 }
 
-// ... (interface CampaignsTableProps unchanged)
+interface CampaignsTableProps {
+  campaigns: Campaign[];
+  advertiserId: string;
+}
 
 export default function CampaignsTable({ campaigns, advertiserId }: CampaignsTableProps) {
   const [editModal, setEditModal] = useState<{ isOpen: boolean; data: any }>({ isOpen: false, data: null });
@@ -27,15 +32,17 @@ export default function CampaignsTable({ campaigns, advertiserId }: CampaignsTab
         data={editModal.data}
       />
       <div className="p-6 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-800 tracking-tight">Campaigns</h2>
+        <h2 className="text-xl font-bold text-gray-800 tracking-tight">Campaigns Performance</h2>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full border-collapse">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Budget (Total / Daily)</th>
+              <th className="px-6 py-3 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">Budget (Total / Daily)</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Duration</th>
+              <th className="px-6 py-3 text-right text-xs font-bold text-blue-400 uppercase tracking-widest">CV</th>
+              <th className="px-6 py-3 text-right text-xs font-bold text-emerald-400 uppercase tracking-widest">Revenue</th>
               <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-widest">Actions</th>
             </tr>
           </thead>
@@ -51,12 +58,25 @@ export default function CampaignsTable({ campaigns, advertiserId }: CampaignsTab
                   <div className="font-bold">{new Date(c.start_date).toLocaleDateString('ja-JP')}</div>
                   <div className="text-[10px]">to {c.end_date ? new Date(c.end_date).toLocaleDateString('ja-JP') : 'Endless'}</div>
                 </td>
-
+                <td className="px-6 py-4 text-right font-mono font-bold text-blue-700">
+                  {c.conversions.toLocaleString()}
+                </td>
+                <td className="px-6 py-4 text-right font-mono font-bold text-emerald-700">
+                  ¥{c.revenue.toLocaleString()}
+                </td>
                 <td className="px-6 py-4 text-center">
-                  <button onClick={() => setEditModal({ isOpen: true, data: c })} className="text-blue-600 hover:text-blue-800 font-bold text-[10px] uppercase">Edit</button>
+                  <button 
+                    onClick={() => setEditModal({ isOpen: true, data: c })} 
+                    className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase transition-colors"
+                  >
+                    Edit
+                  </button>
                 </td>
               </tr>
             ))}
+            {campaigns.length === 0 && (
+              <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-400 italic">No campaigns found.</td></tr>
+            )}
           </tbody>
         </table>
       </div>
