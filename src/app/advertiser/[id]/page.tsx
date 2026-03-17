@@ -45,18 +45,7 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
   // CV計算
   const conversionRules = advertiser.conversionRules;
   const allConversions = conversionRules.flatMap(r => r.conversions);
-  
-  const macroConversions = allConversions.filter(c => {
-    const rule = conversionRules.find(r => r.id === c.rule_id);
-    return rule?.label === 'macro';
-  });
-  
-  const microConversions = allConversions.filter(c => {
-    const rule = conversionRules.find(r => r.id === c.rule_id);
-    return rule?.label === 'micro';
-  });
-
-  const totalMacroRevenue = macroConversions.reduce((acc, curr) => acc + curr.revenue, 0);
+  const totalRevenue = allConversions.reduce((acc, curr) => acc + curr.revenue, 0);
 
   const advertiserInsights = await getAdvertiserInsights(id);
 
@@ -140,24 +129,19 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
             <div className="text-2xl font-black text-gray-900">{totalClicks.toLocaleString()}</div>
           </div>
           <div className="bg-blue-50 p-6 rounded-xl shadow-sm border border-blue-100 text-center">
-            <h3 className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Macro CV</h3>
-            <div className="text-2xl font-black text-blue-900">{macroConversions.length}</div>
-            <p className="text-[10px] text-blue-500 font-bold">CVR: {totalClicks > 0 ? ((macroConversions.length / totalClicks) * 100).toFixed(2) : 0}%</p>
-          </div>
-          <div className="bg-indigo-50 p-6 rounded-xl shadow-sm border border-indigo-100 text-center">
-            <h3 className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-1">Micro CV</h3>
-            <div className="text-2xl font-black text-indigo-900">{microConversions.length}</div>
-            <p className="text-[10px] text-indigo-500 font-bold">CVR: {totalClicks > 0 ? ((microConversions.length / totalClicks) * 100).toFixed(2) : 0}%</p>
+            <h3 className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Total Conversions</h3>
+            <div className="text-2xl font-black text-blue-900">{allConversions.length}</div>
+            <p className="text-[10px] text-blue-500 font-bold">Total CVR: {totalClicks > 0 ? ((allConversions.length / totalClicks) * 100).toFixed(2) : 0}%</p>
           </div>
           <div className="bg-emerald-50 p-6 rounded-xl shadow-sm border border-emerald-100 text-center">
-            <h3 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Macro Rev</h3>
-            <div className="text-2xl font-black text-emerald-900">¥{totalMacroRevenue.toLocaleString()}</div>
-            <p className="text-[10px] text-emerald-500 font-bold">ROAS: {dailyStats.reduce((acc, curr) => acc + curr.cost, 0) > 0 ? ((totalMacroRevenue / dailyStats.reduce((acc, curr) => acc + curr.cost, 0)) * 100).toFixed(0) : 0}%</p>
+            <h3 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Total Revenue</h3>
+            <div className="text-2xl font-black text-emerald-900">¥{totalRevenue.toLocaleString()}</div>
+            <p className="text-[10px] text-emerald-500 font-bold">ROAS: {dailyStats.reduce((acc, curr) => acc + curr.cost, 0) > 0 ? ((totalRevenue / dailyStats.reduce((acc, curr) => acc + curr.cost, 0)) * 100).toFixed(0) : 0}%</p>
           </div>
-          <div className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100 text-center">
-            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Musubi Fee</h3>
-            <div className="text-2xl font-black text-slate-700">30%</div>
-            <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Service Fee</p>
+          <div className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100 text-center col-span-1 md:col-span-2">
+            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Musubi Transparency</h3>
+            <div className="text-sm font-bold text-slate-700">Fee: 30% / Publisher Share: 70%</div>
+            <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Industry Standard verified</p>
           </div>
         </section>
 
