@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { createColumnHelper, ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "./DataTable";
 import EditModal from "./EditModal";
 
 interface AdGroup {
@@ -23,6 +25,47 @@ interface AdGroupsTableProps {
 export default function AdGroupsTable({ adGroups, campaigns, advertiserId }: AdGroupsTableProps) {
   const [editModal, setEditModal] = useState<{ isOpen: boolean; data: any }>({ isOpen: false, data: null });
 
+  const columnHelper = createColumnHelper<AdGroup>();
+
+  const columns = useMemo(() => [
+    columnHelper.accessor("name", {
+      header: "Name",
+      cell: (info) => <span className="font-bold text-gray-900">{info.getValue()}</span>,
+    }),
+    columnHelper.accessor("campaign_name", {
+      header: "Campaign",
+      cell: (info) => <span className="text-gray-600 italic text-xs">{info.getValue()}</span>,
+    }),
+    columnHelper.accessor("max_bid", {
+      header: "Max Bid",
+      cell: (info) => <span className="font-mono font-bold text-slate-700 whitespace-nowrap">¥{info.getValue().toLocaleString()}</span>,
+    }),
+    columnHelper.accessor("target_device", {
+      header: "Device",
+      cell: (info) => <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-bold uppercase">{info.getValue()}</span>,
+    }),
+    columnHelper.accessor("conversions", {
+      header: "CV",
+      cell: (info) => <span className="font-mono font-bold text-blue-700">{info.getValue().toLocaleString()}</span>,
+    }),
+    columnHelper.accessor("revenue", {
+      header: "Revenue",
+      cell: (info) => <span className="font-mono font-bold text-emerald-700 whitespace-nowrap">¥{info.getValue().toLocaleString()}</span>,
+    }),
+    columnHelper.display({
+      id: "actions",
+      header: "Actions",
+      cell: (info) => (
+        <button 
+          onClick={() => setEditModal({ isOpen: true, data: info.row.original })} 
+          className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase transition-colors"
+        >
+          Edit
+        </button>
+      ),
+    }),
+  ], [columnHelper]);
+
   return (
     <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
       <EditModal 
@@ -36,50 +79,11 @@ export default function AdGroupsTable({ adGroups, campaigns, advertiserId }: AdG
       <div className="p-6 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
         <h2 className="text-xl font-bold text-gray-800 tracking-tight">Ad Groups Performance</h2>
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Campaign</th>
-              <th className="px-6 py-3 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">Max Bid</th>
-              <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-widest">Device</th>
-              <th className="px-6 py-3 text-right text-xs font-bold text-blue-400 uppercase tracking-widest">CV</th>
-              <th className="px-6 py-3 text-right text-xs font-bold text-emerald-400 uppercase tracking-widest">Revenue</th>
-              <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-widest">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {adGroups.map((g) => (
-              <tr key={g.id} className="hover:bg-gray-50 transition-colors text-sm">
-                <td className="px-6 py-4 font-bold text-gray-900">{g.name}</td>
-                <td className="px-6 py-4 text-gray-600 italic text-xs">{g.campaign_name}</td>
-                <td className="px-6 py-4 text-right font-mono font-bold text-slate-700">¥{g.max_bid}</td>
-                <td className="px-6 py-4 text-center">
-                  <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-bold uppercase">{g.target_device}</span>
-                </td>
-                <td className="px-6 py-4 text-right font-mono font-bold text-blue-700">
-                  {g.conversions.toLocaleString()}
-                </td>
-                <td className="px-6 py-4 text-right font-mono font-bold text-emerald-700">
-                  ¥{g.revenue.toLocaleString()}
-                </td>
-                <td className="px-6 py-4 text-center">
-                  <button 
-                    onClick={() => setEditModal({ isOpen: true, data: g })} 
-                    className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase transition-colors"
-                  >
-                    Edit
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {adGroups.length === 0 && (
-              <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-400 italic">No ad groups found.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+
+      <DataTable 
+        columns={columns as ColumnDef<AdGroup, any>[]} 
+        data={adGroups} 
+      />
     </section>
   );
 }
