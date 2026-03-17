@@ -296,6 +296,16 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
               <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Conversion Tracking</h2>
               <p className="text-sm text-gray-500 mt-1">広告主様のサイトでのアクション（購入・登録など）を計測します。</p>
             </div>
+            <Link 
+              href={`/advertiser/${id}/simulator?click_id=${allConversions[0]?.click_id || 'test-session-123'}`}
+              className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg flex items-center gap-2"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              Launch Conversion Simulator (Sandbox)
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
