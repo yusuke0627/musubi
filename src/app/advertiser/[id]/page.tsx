@@ -46,6 +46,8 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
   const conversionRules = advertiser.conversionRules;
   const allConversions = conversionRules.flatMap(r => r.conversions);
   const totalRevenue = allConversions.reduce((acc, curr) => acc + curr.revenue, 0);
+  const totalCost = dailyStats.reduce((acc, curr) => acc + curr.cost, 0);
+  const totalCV = allConversions.length;
 
   const advertiserInsights = await getAdvertiserInsights(id);
 
@@ -119,29 +121,36 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
         </header>
 
         {/* Stats & Transparency */}
-        <section className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
-            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Impressions</h3>
-            <div className="text-2xl font-black text-gray-900">{totalImps.toLocaleString()}</div>
-          </div>
+        <section className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Clicks</h3>
             <div className="text-2xl font-black text-gray-900">{totalClicks.toLocaleString()}</div>
+            <p className="text-[10px] text-gray-400 font-bold">CTR: {totalImps > 0 ? ((totalClicks / totalImps) * 100).toFixed(2) : 0}%</p>
           </div>
           <div className="bg-blue-50 p-6 rounded-xl shadow-sm border border-blue-100 text-center">
-            <h3 className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Total Conversions</h3>
-            <div className="text-2xl font-black text-blue-900">{allConversions.length}</div>
-            <p className="text-[10px] text-blue-500 font-bold">Total CVR: {totalClicks > 0 ? ((allConversions.length / totalClicks) * 100).toFixed(2) : 0}%</p>
+            <h3 className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Total CV</h3>
+            <div className="text-2xl font-black text-blue-900">{totalCV.toLocaleString()}</div>
+            <p className="text-[10px] text-blue-500 font-bold">CVR: {totalClicks > 0 ? ((totalCV / totalClicks) * 100).toFixed(2) : 0}%</p>
+          </div>
+          <div className="bg-indigo-50 p-6 rounded-xl shadow-sm border border-indigo-100 text-center">
+            <h3 className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-1">CPA (Cost/CV)</h3>
+            <div className="text-2xl font-black text-indigo-900">¥{totalCV > 0 ? Math.floor(totalCost / totalCV).toLocaleString() : 0}</div>
+            <p className="text-[10px] text-indigo-400 font-bold">Efficiency Score</p>
           </div>
           <div className="bg-emerald-50 p-6 rounded-xl shadow-sm border border-emerald-100 text-center">
             <h3 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Total Revenue</h3>
             <div className="text-2xl font-black text-emerald-900">¥{totalRevenue.toLocaleString()}</div>
-            <p className="text-[10px] text-emerald-500 font-bold">ROAS: {dailyStats.reduce((acc, curr) => acc + curr.cost, 0) > 0 ? ((totalRevenue / dailyStats.reduce((acc, curr) => acc + curr.cost, 0)) * 100).toFixed(0) : 0}%</p>
+            <p className="text-[10px] text-emerald-500 font-bold">ROAS: {totalCost > 0 ? ((totalRevenue / totalCost) * 100).toFixed(0) : 0}%</p>
           </div>
-          <div className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100 text-center col-span-1 md:col-span-2">
-            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Musubi Transparency</h3>
-            <div className="text-sm font-bold text-slate-700">Fee: 30% / Publisher Share: 70%</div>
-            <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Industry Standard verified</p>
+          <div className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100 text-center">
+            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Spend</h3>
+            <div className="text-2xl font-black text-slate-900">¥{totalCost.toLocaleString()}</div>
+            <p className="text-[10px] text-slate-400 font-bold">Invested</p>
+          </div>
+          <div className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800 text-center">
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Musubi Fee</h3>
+            <div className="text-2xl font-black text-white">30%</div>
+            <p className="text-[10px] text-slate-500 mt-1 font-medium italic">Service Fee</p>
           </div>
         </section>
 
