@@ -430,9 +430,11 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
                     {conversionRules.length > 0 && (
                       <tr className="bg-slate-50 font-black border-t-2 border-slate-200">
                         <td className="px-4 py-4 text-sm text-slate-900 uppercase tracking-wider">Total (All Rules)</td>
-                        <td className="px-4 py-4 text-right text-sm">{totalCV.toLocaleString()}</td>
+                        <td className="px-4 py-4 text-right text-sm text-slate-900 font-black">{totalCV.toLocaleString()}</td>
                         <td className="px-4 py-4 text-right text-sm text-blue-700">{(totalClicks > 0 ? (totalCV / totalClicks) * 100 : 0).toFixed(2)}%</td>
-                        <td className="px-4 py-4 text-right text-sm text-slate-700">¥{(totalCV > 0 ? Math.floor(totalCost / totalCV) : 0).toLocaleString()}</td>
+                        <td className="px-4 py-4 text-right text-sm text-slate-700">
+                          {totalCV > 0 && totalCost > 0 ? `¥${Math.floor(totalCost / totalCV).toLocaleString()}` : '¥0'}
+                        </td>
                         <td className="px-4 py-4 text-right text-sm font-mono text-emerald-700">¥{totalRevenue.toLocaleString()}</td>
                         <td></td>
                       </tr>
