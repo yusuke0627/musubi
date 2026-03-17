@@ -42,13 +42,6 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
 
   if (!advertiser) return notFound();
 
-  // CV計算
-  const conversionRules = advertiser.conversionRules;
-  const allConversions = conversionRules.flatMap(r => r.conversions);
-  const totalRevenue = allConversions.reduce((acc, curr) => acc + curr.revenue, 0);
-  const totalCost = dailyStats.reduce((acc, curr) => acc + curr.cost, 0);
-  const totalCV = allConversions.length;
-
   const advertiserInsights = await getAdvertiserInsights(id);
 
   // キャンペーン一覧の取得
@@ -105,6 +98,13 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
   const placementStats = await getPlacementStats(id.toString()) as any[];
   const totalImps = dailyStats.reduce((acc, curr) => acc + curr.impressions, 0);
   const totalClicks = dailyStats.reduce((acc, curr) => acc + curr.clicks, 0);
+
+  // CV & KPI計算
+  const conversionRules = advertiser.conversionRules;
+  const allConversions = conversionRules.flatMap(r => r.conversions);
+  const totalRevenue = allConversions.reduce((acc, curr) => acc + curr.revenue, 0);
+  const totalCost = dailyStats.reduce((acc, curr) => acc + curr.cost, 0);
+  const totalCV = allConversions.length;
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
