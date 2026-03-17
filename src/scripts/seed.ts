@@ -180,6 +180,33 @@ async function seed() {
   // Current 24h: Low activity (triggered drop alert)
   await prisma.impression.createMany({ data: Array.from({ length: 50 }).map(() => ({ ad_id: 1, publisher_id: 1, created_at: yesterday })) });
 
+  // 12. Conversion Tracking Data
+  console.log('🎯 Generating conversion tracking data...');
+  const clickId1 = crypto.randomUUID();
+  const clickId2 = crypto.randomUUID();
+
+  await prisma.click.createMany({
+    data: [
+      { click_id: clickId1, ad_id: 1, publisher_id: 1, campaign_id: 1, cost: 100, is_valid: 1, created_at: yesterday },
+      { click_id: clickId2, ad_id: 1, publisher_id: 2, campaign_id: 1, cost: 100, is_valid: 1, created_at: yesterday },
+    ]
+  });
+
+  const rule1 = await prisma.conversionRule.create({
+    data: { advertiser_id: 1, name: 'Product Purchase', url_pattern: '/purchase', label: 'macro', revenue: 5000 }
+  });
+  const rule2 = await prisma.conversionRule.create({
+    data: { advertiser_id: 1, name: 'Add to Cart', url_pattern: '/cart', label: 'micro', revenue: 0 }
+  });
+
+  await prisma.conversion.createMany({
+    data: [
+      { click_id: clickId1, rule_id: rule1.id, revenue: 5000, created_at: now },
+      { click_id: clickId1, rule_id: rule2.id, revenue: 0, created_at: yesterday },
+      { click_id: clickId2, rule_id: rule2.id, revenue: 0, created_at: now },
+    ]
+  });
+
   console.log('✅ Branch Coverage Seeding completed!');
 }
 

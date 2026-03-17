@@ -42,6 +42,14 @@ const AdSchema = z.object({
   target_url: z.string().url("Must be a valid URL"),
 });
 
+const ConversionRuleSchema = z.object({
+  advertiser_id: z.coerce.number().int().positive(),
+  url_pattern: z.string().min(1, "URL pattern is required"),
+  name: z.string().min(1, "Name is required"),
+  label: z.string().optional().default("macro"),
+  revenue: z.coerce.number().min(0).default(0),
+});
+
 // キャンペーン作成
 export async function createCampaign(formData: FormData) {
   const data = Object.fromEntries(formData.entries());
@@ -139,6 +147,46 @@ export async function createAd(formData: FormData) {
   });
 
   revalidatePath(`/advertiser/${advertiser_id}`);
+}
+
+// CVルール作成
+export async function createConversionRule(formData: FormData) {
+  const data = Object.fromEntries(formData.entries());
+  const parsed = ConversionRuleSchema.safeParse(data);
+
+  if (!parsed.success) {
+    console.error(parsed.error.issues);
+    throw new Error("Invalid conversion rule data");
+  }
+
+  const { advertiser_id, url_pattern, name, label, revenue } = parsed.data;
+  await checkAuth(advertiser_id);
+
+  await prisma.conversionRule.create({
+    data: {
+      advertiser_id,
+      url_pattern,
+      name,
+      label,
+      revenue,
+    }
+  });
+
+  revalidatePath(`/advertiser/${advertiser_id}`);
+}
+
+// CVルール削除
+export async function deleteConversionRule(formData: FormData) {
+  const advertiserId = parseInt(formData.get("advertiser_id") as string, 10);
+  const ruleId = parseInt(formData.get("rule_id") as string, 10);
+
+  await checkAuth(advertiserId);
+
+  await prisma.conversionRule.delete({
+    where: { id: ruleId }
+  });
+
+  revalidatePath(`/advertiser/${advertiserId}`);
 }
 
 // キャンペーン更新

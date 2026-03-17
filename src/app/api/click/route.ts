@@ -22,9 +22,12 @@ export async function GET(req: NextRequest) {
     });
 
     if (ad) {
+      const clickId = crypto.randomUUID();
+
       // 未処理のクリックとしてログ挿入
       await prisma.click.create({
         data: {
+          click_id: clickId,
           ad_id: adId,
           publisher_id: publisherId,
           user_agent: ua,
@@ -33,7 +36,10 @@ export async function GET(req: NextRequest) {
         }
       });
       
-      return NextResponse.redirect(ad.target_url);
+      const targetUrl = new URL(ad.target_url);
+      targetUrl.searchParams.set("click_id", clickId);
+      
+      return NextResponse.redirect(targetUrl.toString());
     } else {
       return new NextResponse("Ad not found", { status: 404 });
     }

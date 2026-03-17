@@ -11,10 +11,11 @@ datasource db {
 }
 
 model Advertiser {
-  id        Int        @id @default(autoincrement())
-  name      String
-  balance   Float      @default(0)
-  campaigns Campaign[]
+  id              Int              @id @default(autoincrement())
+  name            String
+  balance         Float            @default(0)
+  campaigns       Campaign[]
+  conversionRules ConversionRule[]
 
   @@map("advertisers")
 }
@@ -142,6 +143,7 @@ model Impression {
 
 model Click {
   id                 Int       @id @default(autoincrement())
+  click_id           String?   @unique
   ad_id              Int
   publisher_id       Int
   campaign_id        Int?
@@ -156,6 +158,34 @@ model Click {
   ad                 Ad        @relation(fields: [ad_id], references: [id])
   publisher          Publisher @relation(fields: [publisher_id], references: [id])
   campaign           Campaign? @relation(fields: [campaign_id], references: [id])
+  conversions        Conversion[]
 
   @@map("clicks")
+}
+
+model ConversionRule {
+  id            Int          @id @default(autoincrement())
+  advertiser_id Int
+  url_pattern   String       // e.g. "/purchase"
+  name          String       // e.g. "購入"
+  label         String?      // e.g. "macro", "micro", "landing_page", "cart" など自由に設定
+  revenue       Float        @default(0)
+  created_at    DateTime     @default(now())
+  advertiser    Advertiser   @relation(fields: [advertiser_id], references: [id])
+  conversions   Conversion[]
+
+  @@map("conversion_rules")
+}
+
+
+model Conversion {
+  id         Int            @id @default(autoincrement())
+  click_id   String
+  rule_id    Int
+  revenue    Float          @default(0)
+  created_at DateTime       @default(now())
+  click      Click          @relation(fields: [click_id], references: [click_id])
+  rule       ConversionRule @relation(fields: [rule_id], references: [id])
+
+  @@map("conversions")
 }
