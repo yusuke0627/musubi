@@ -121,36 +121,15 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
         </header>
 
         {/* Stats & Transparency */}
-        <section className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Impressions</h3>
+            <div className="text-2xl font-black text-gray-900">{totalImps.toLocaleString()}</div>
+          </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
             <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Clicks</h3>
             <div className="text-2xl font-black text-gray-900">{totalClicks.toLocaleString()}</div>
             <p className="text-[10px] text-gray-400 font-bold">CTR: {totalImps > 0 ? ((totalClicks / totalImps) * 100).toFixed(2) : 0}%</p>
-          </div>
-          <div className="bg-blue-50 p-6 rounded-xl shadow-sm border border-blue-100 text-center">
-            <h3 className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Total CV</h3>
-            <div className="text-2xl font-black text-blue-900">{totalCV.toLocaleString()}</div>
-            <p className="text-[10px] text-blue-500 font-bold">CVR: {totalClicks > 0 ? ((totalCV / totalClicks) * 100).toFixed(2) : 0}%</p>
-          </div>
-          <div className="bg-indigo-50 p-6 rounded-xl shadow-sm border border-indigo-100 text-center">
-            <h3 className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-1">CPA (Cost/CV)</h3>
-            <div className="text-2xl font-black text-indigo-900">¥{totalCV > 0 ? Math.floor(totalCost / totalCV).toLocaleString() : 0}</div>
-            <p className="text-[10px] text-indigo-400 font-bold">Efficiency Score</p>
-          </div>
-          <div className="bg-emerald-50 p-6 rounded-xl shadow-sm border border-emerald-100 text-center">
-            <h3 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Total Revenue</h3>
-            <div className="text-2xl font-black text-emerald-900">¥{totalRevenue.toLocaleString()}</div>
-            <p className="text-[10px] text-emerald-500 font-bold">ROAS: {totalCost > 0 ? ((totalRevenue / totalCost) * 100).toFixed(0) : 0}%</p>
-          </div>
-          <div className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100 text-center">
-            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Spend</h3>
-            <div className="text-2xl font-black text-slate-900">¥{totalCost.toLocaleString()}</div>
-            <p className="text-[10px] text-slate-400 font-bold">Invested</p>
-          </div>
-          <div className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800 text-center">
-            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Musubi Fee</h3>
-            <div className="text-2xl font-black text-white">30%</div>
-            <p className="text-[10px] text-slate-500 mt-1 font-medium italic">Service Fee</p>
           </div>
         </section>
 
@@ -447,6 +426,17 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
                         </tr>
                       );
                     })}
+                    {/* Total Row */}
+                    {conversionRules.length > 0 && (
+                      <tr className="bg-slate-50 font-black border-t-2 border-slate-200">
+                        <td className="px-4 py-4 text-sm text-slate-900 uppercase tracking-wider">Total (All Rules)</td>
+                        <td className="px-4 py-4 text-right text-sm">{totalCV.toLocaleString()}</td>
+                        <td className="px-4 py-4 text-right text-sm text-blue-700">{(totalClicks > 0 ? (totalCV / totalClicks) * 100 : 0).toFixed(2)}%</td>
+                        <td className="px-4 py-4 text-right text-sm text-slate-700">¥{(totalCV > 0 ? Math.floor(totalCost / totalCV) : 0).toLocaleString()}</td>
+                        <td className="px-4 py-4 text-right text-sm font-mono text-emerald-700">¥{totalRevenue.toLocaleString()}</td>
+                        <td></td>
+                      </tr>
+                    )}
                     {conversionRules.length === 0 && (
                       <tr>
                         <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-400 italic">No rules defined yet.</td>
