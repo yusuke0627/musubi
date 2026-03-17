@@ -393,43 +393,60 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase">Rule / URL</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase">Category</th>
+                      <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-400 uppercase">CV</th>
+                      <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-400 uppercase">CVR</th>
+                      <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-400 uppercase">CPA</th>
                       <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-400 uppercase">Value</th>
                       <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-50">
-                    {conversionRules.map(rule => (
-                      <tr key={rule.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="text-sm font-bold text-gray-900">{rule.name}</div>
-                          <div className="text-[10px] font-mono text-gray-400">{rule.url_pattern}</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            rule.label === 'macro' ? 'bg-blue-100 text-blue-700' : 
-                            rule.label === 'micro' ? 'bg-indigo-100 text-indigo-700' : 
-                            'bg-slate-100 text-slate-700'
-                          }`}>
-                            {rule.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm font-mono font-bold text-gray-900">
-                          ¥{rule.revenue.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <form action={deleteConversionRule}>
-                            <input type="hidden" name="advertiser_id" value={id} />
-                            <input type="hidden" name="rule_id" value={rule.id} />
-                            <button type="submit" className="text-red-400 hover:text-red-600 transition-colors">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </form>
-                        </td>
-                      </tr>
-                    ))}
+                    {conversionRules.map(rule => {
+                      const cvCount = rule.conversions.length;
+                      const cvr = totalClicks > 0 ? (cvCount / totalClicks) * 100 : 0;
+                      const cpa = cvCount > 0 ? totalCost / cvCount : 0;
+                      
+                      return (
+                        <tr key={rule.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="text-sm font-bold text-gray-900">{rule.name}</div>
+                            <div className="text-[10px] font-mono text-gray-400">{rule.url_pattern}</div>
+                            <div className="mt-1">
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                rule.label === 'macro' ? 'bg-blue-100 text-blue-700' : 
+                                rule.label === 'micro' ? 'bg-indigo-100 text-indigo-700' : 
+                                'bg-slate-100 text-slate-700'
+                              }`}>
+                                {rule.label}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">
+                            {cvCount.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-right text-xs font-medium text-blue-600">
+                            {cvr.toFixed(2)}%
+                          </td>
+                          <td className="px-4 py-3 text-right text-xs font-medium text-slate-500">
+                            {cpa > 0 ? `¥${Math.floor(cpa).toLocaleString()}` : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm font-mono font-bold text-gray-900">
+                            ¥{rule.revenue.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <form action={deleteConversionRule}>
+                              <input type="hidden" name="advertiser_id" value={id} />
+                              <input type="hidden" name="rule_id" value={rule.id} />
+                              <button type="submit" className="text-red-400 hover:text-red-600 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </form>
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {conversionRules.length === 0 && (
                       <tr>
                         <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-400 italic">No rules defined yet.</td>
