@@ -80,7 +80,7 @@ export async function getDailyStats(filter: { advertiserId?: string, publisherId
 export async function getPlacementStats(advertiserId: string) {
   const advId = parseInt(advertiserId, 10);
   
-  // Placement stats still benefit from a join, but let's see if we can do it with Prisma findMany
+  // Placement stats with Conversions
   const publishers = await prisma.publisher.findMany({
     where: {
       OR: [
@@ -98,15 +98,39 @@ export async function getPlacementStats(advertiserId: string) {
             where: { ad: { adGroup: { campaign: { advertiser_id: advId } } }, is_valid: 1 }
           }
         }
+      },
+      clicks: {
+        where: { 
+          ad: { adGroup: { campaign: { advertiser_id: advId } } },
+          is_valid: 1 
+        },
+        select: {
+          cost: true,
+          conversions: {
+            select: {
+              revenue: true
+            }
+          }
+        }
       }
     }
   });
 
-  return publishers.map(p => ({
-    id: p.id,
-    name: p.name,
-    domain: p.domain,
-    impressions: p._count.impressions,
-    clicks: p._count.clicks
-  })).sort((a, b) => b.impressions - a.impressions);
+  return publishers.map(p => {
+    const totalCost = p.clicks.reduce((acc, curr) => acc + curr.cost, 0);
+    const conversions = p.clicks.flatMap(c => c.conversions);
+    const cvCount = conversions.length;
+    const cvRevenue = conversions.reduce((acc, curr) => acc + curr.revenue, 0);
+
+    return {
+      id: p.id,
+      name: p.name,
+      domain: p.domain,
+      impressions: p._count.impressions,
+      clicks: p._count.clicks,
+      cost: totalCost,
+      conversions: cvCount,
+      revenue: cvRevenue
+    };
+  }).sort((a, b) => b.impressions - a.impressions);
 }

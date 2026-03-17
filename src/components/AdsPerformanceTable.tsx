@@ -12,6 +12,8 @@ interface AdPerformance {
   rejection_reason?: string | null;
   impressions: number;
   clicks: number;
+  conversions: number;
+  revenue: number;
   campaign_id: number;
   ad_group_id: number;
   group_name: string;
@@ -37,12 +39,13 @@ const COLUMN_LABELS: Record<string, string> = {
   bid: "Max Bid",
   device: "Device",
   targetUrl: "Target URL",
-  stats: "Stats",
+  stats: "Stats (Click)",
+  conversion: "Conversions",
 };
 
 export default function AdsPerformanceTable({ ads, adGroups, advertiserId }: AdsPerformanceTableProps) {
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
-    new Set(["adGroup", "stats"])
+    new Set(["adGroup", "stats", "conversion"])
   );
   const [showColumnSelector, setShowColumnSelector] = useState(false);
 
@@ -123,6 +126,14 @@ export default function AdsPerformanceTable({ ads, adGroups, advertiserId }: Ads
                   <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-widest">CTR</th>
                 </>
               )}
+              {visibleColumns.has("conversion") && (
+                <>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-blue-400 uppercase tracking-widest">CV</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-blue-400 uppercase tracking-widest">CVR</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-emerald-400 uppercase tracking-widest text-nowrap">CPA</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-emerald-400 uppercase tracking-widest">Revenue</th>
+                </>
+              )}
               <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-widest sticky right-0 bg-gray-50 z-10 border-l border-gray-100">Actions</th>
             </tr>
           </thead>
@@ -175,6 +186,18 @@ export default function AdsPerformanceTable({ ads, adGroups, advertiserId }: Ads
                     <td className="px-6 py-4 text-center text-blue-600 font-black">
                       {ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : '0.00'}%
                     </td>
+                  </>
+                )}
+                {visibleColumns.has("conversion") && (
+                  <>
+                    <td className="px-6 py-4 text-right font-mono font-bold text-blue-700">{ad.conversions.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-center text-blue-600 font-black">
+                      {ad.clicks > 0 ? ((ad.conversions / ad.clicks) * 100).toFixed(2) : '0.00'}%
+                    </td>
+                    <td className="px-6 py-4 text-right font-mono font-bold text-emerald-700">
+                      {ad.conversions > 0 ? `¥${Math.floor((ad.clicks * ad.max_bid) / ad.conversions).toLocaleString()}` : '-'}
+                    </td>
+                    <td className="px-6 py-4 text-right font-mono font-bold text-emerald-700">¥{ad.revenue.toLocaleString()}</td>
                   </>
                 )}
                 <td className="px-6 py-4 text-center sticky right-0 bg-white z-10 border-l border-gray-100 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">
