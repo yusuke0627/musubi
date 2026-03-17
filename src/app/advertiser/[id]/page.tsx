@@ -9,7 +9,7 @@ import CampaignsTable from "@/components/CampaignsTable";
 import AdGroupsTable from "@/components/AdGroupsTable";
 import PlacementReportTable from "@/components/PlacementReportTable";
 import InsightSection from "@/components/InsightSection";
-import { createCampaign, createAdGroup, createAd } from "./actions";
+import { createCampaign, createAdGroup, createAd, createConversionRule, deleteConversionRule } from "./actions";
 import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
@@ -30,10 +30,33 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
   }
 
   const advertiser = await prisma.advertiser.findUnique({
-    where: { id }
+    where: { id },
+    include: {
+      conversionRules: {
+        include: {
+          conversions: true
+        }
+      }
+    }
   });
 
   if (!advertiser) return notFound();
+
+  // CV計算
+  const conversionRules = advertiser.conversionRules;
+  const allConversions = conversionRules.flatMap(r => r.conversions);
+  
+  const macroConversions = allConversions.filter(c => {
+    const rule = conversionRules.find(r => r.id === c.rule_id);
+    return rule?.label === 'macro';
+  });
+  
+  const microConversions = allConversions.filter(c => {
+    const rule = conversionRules.find(r => r.id === c.rule_id);
+    return rule?.label === 'micro';
+  });
+
+  const totalMacroRevenue = macroConversions.reduce((acc, curr) => acc + curr.revenue, 0);
 
   const advertiserInsights = await getAdvertiserInsights(id);
 
@@ -107,24 +130,34 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
         </header>
 
         {/* Stats & Transparency */}
-        <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <section className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Impressions</h3>
-            <div className="text-3xl font-black text-gray-900">{totalImps.toLocaleString()}</div>
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Impressions</h3>
+            <div className="text-2xl font-black text-gray-900">{totalImps.toLocaleString()}</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Clicks</h3>
-            <div className="text-3xl font-black text-gray-900">{totalClicks.toLocaleString()}</div>
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Clicks</h3>
+            <div className="text-2xl font-black text-gray-900">{totalClicks.toLocaleString()}</div>
           </div>
-          <div className="bg-emerald-50/50 p-6 rounded-xl shadow-sm border border-emerald-100 text-center">
-            <h3 className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-2">Avg. Rev Share</h3>
-            <div className="text-3xl font-black text-emerald-700">70%</div>
-            <p className="text-[10px] text-emerald-500 mt-1 font-medium italic">Transparency: Paid to Publishers</p>
+          <div className="bg-blue-50 p-6 rounded-xl shadow-sm border border-blue-100 text-center">
+            <h3 className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Macro CV</h3>
+            <div className="text-2xl font-black text-blue-900">{macroConversions.length}</div>
+            <p className="text-[10px] text-blue-500 font-bold">CVR: {totalClicks > 0 ? ((macroConversions.length / totalClicks) * 100).toFixed(2) : 0}%</p>
           </div>
-          <div className="bg-blue-50/50 p-6 rounded-xl shadow-sm border border-blue-100 text-center">
-            <h3 className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-2">Musubi Fee</h3>
-            <div className="text-3xl font-black text-blue-700">30%</div>
-            <p className="text-[10px] text-blue-500 mt-1 font-medium italic">Service & Optimization Fee</p>
+          <div className="bg-indigo-50 p-6 rounded-xl shadow-sm border border-indigo-100 text-center">
+            <h3 className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-1">Micro CV</h3>
+            <div className="text-2xl font-black text-indigo-900">{microConversions.length}</div>
+            <p className="text-[10px] text-indigo-500 font-bold">CVR: {totalClicks > 0 ? ((microConversions.length / totalClicks) * 100).toFixed(2) : 0}%</p>
+          </div>
+          <div className="bg-emerald-50 p-6 rounded-xl shadow-sm border border-emerald-100 text-center">
+            <h3 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Macro Rev</h3>
+            <div className="text-2xl font-black text-emerald-900">¥{totalMacroRevenue.toLocaleString()}</div>
+            <p className="text-[10px] text-emerald-500 font-bold">ROAS: {dailyStats.reduce((acc, curr) => acc + curr.cost, 0) > 0 ? ((totalMacroRevenue / dailyStats.reduce((acc, curr) => acc + curr.cost, 0)) * 100).toFixed(0) : 0}%</p>
+          </div>
+          <div className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100 text-center">
+            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Musubi Fee</h3>
+            <div className="text-2xl font-black text-slate-700">30%</div>
+            <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Service Fee</p>
           </div>
         </section>
 
@@ -271,6 +304,140 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
           <AdGroupsTable adGroups={adGroups} campaigns={campaigns} advertiserId={id.toString()} />
           <AdsPerformanceTable ads={ads} adGroups={adGroups} advertiserId={id.toString()} />
         </div>
+
+        {/* Conversion Tracking Configuration */}
+        <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Conversion Tracking</h2>
+              <p className="text-sm text-gray-500 mt-1">広告主様のサイトでのアクション（購入・登録など）を計測します。</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {/* Tag Snippet */}
+            <div className="space-y-6">
+              <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">1. Global Tracking Tag</h3>
+              <p className="text-sm text-gray-600">
+                下記のタグを、あなたのサイトの全ページの <code>&lt;head&gt;</code> 内に一度だけ貼り付けてください。
+              </p>
+              <div className="relative">
+                <pre className="bg-gray-900 text-emerald-400 p-6 rounded-xl text-xs overflow-x-auto font-mono leading-relaxed shadow-lg">
+{`<script>
+  (function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const clickId = urlParams.get('click_id');
+    if (clickId) {
+      localStorage.setItem('musubi_click_id', clickId);
+    }
+    const storedClickId = localStorage.getItem('musubi_click_id');
+    if (storedClickId) {
+      fetch('http://localhost:3000/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          click_id: storedClickId,
+          url: window.location.href
+        })
+      }).catch(console.error);
+    }
+  })();
+</script>`}
+                </pre>
+                <div className="absolute top-4 right-4 bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded text-[10px] font-bold uppercase">Production Ready</div>
+              </div>
+            </div>
+
+            {/* Rules Management */}
+            <div className="space-y-6">
+              <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">2. Conversion Rules</h3>
+              
+              {/* Rule Creation Form */}
+              <form action={createConversionRule} className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-4">
+                <input type="hidden" name="advertiser_id" value={id} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Rule Name</label>
+                    <input type="text" name="name" className="w-full p-2 border rounded-lg text-sm" placeholder="e.g. Purchase Completed" required />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">URL Pattern (contains)</label>
+                    <input type="text" name="url_pattern" className="w-full p-2 border rounded-lg text-sm font-mono" placeholder="/thanks" required />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Category</label>
+                    <select name="label" className="w-full p-2 border rounded-lg text-sm bg-white">
+                      <option value="macro">Macro (Goal/Revenue)</option>
+                      <option value="micro">Micro (Intermediate)</option>
+                      <option value="landing_page">Landing Page</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Value (¥)</label>
+                    <input type="number" name="revenue" className="w-full p-2 border rounded-lg text-sm" placeholder="1000" />
+                  </div>
+                </div>
+                <button type="submit" className="w-full bg-slate-900 text-white py-2 rounded-lg text-sm font-bold hover:bg-slate-800 transition-colors">
+                  Add Conversion Rule
+                </button>
+              </form>
+
+              {/* Rules List */}
+              <div className="overflow-hidden border border-gray-100 rounded-xl">
+                <table className="min-w-full divide-y divide-gray-100">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase">Rule / URL</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase">Category</th>
+                      <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-400 uppercase">Value</th>
+                      <th className="px-4 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-50">
+                    {conversionRules.map(rule => (
+                      <tr key={rule.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="text-sm font-bold text-gray-900">{rule.name}</div>
+                          <div className="text-[10px] font-mono text-gray-400">{rule.url_pattern}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            rule.label === 'macro' ? 'bg-blue-100 text-blue-700' : 
+                            rule.label === 'micro' ? 'bg-indigo-100 text-indigo-700' : 
+                            'bg-slate-100 text-slate-700'
+                          }`}>
+                            {rule.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-mono font-bold text-gray-900">
+                          ¥{rule.revenue.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <form action={deleteConversionRule}>
+                            <input type="hidden" name="advertiser_id" value={id} />
+                            <input type="hidden" name="rule_id" value={rule.id} />
+                            <button type="submit" className="text-red-400 hover:text-red-600 transition-colors">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    ))}
+                    {conversionRules.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-400 italic">No rules defined yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );
