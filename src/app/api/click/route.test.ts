@@ -25,7 +25,7 @@ describe('GET /api/click', () => {
   });
 
   it('should record a click with ad_unit_id and redirect with click_id', async () => {
-    const req = new NextRequest('http://localhost/api/click?ad_id=1&publisher_id=1&ad_unit_id=1', {
+    const req = new NextRequest('http://localhost/api/click?ad_id=1&ad_unit_id=1', {
       headers: {
         'user-agent': 'Mozilla/5.0...',
         'x-forwarded-for': '1.2.3.4'
@@ -50,7 +50,7 @@ describe('GET /api/click', () => {
   });
 
   it('should return 404 if ad is not found', async () => {
-    const req = new NextRequest('http://localhost/api/click?ad_id=999');
+    const req = new NextRequest('http://localhost/api/click?ad_id=999&ad_unit_id=1');
     const res = await GET(req);
     expect(res.status).toBe(404);
   });
