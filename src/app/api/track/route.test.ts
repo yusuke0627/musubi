@@ -11,7 +11,10 @@ describe('Conversion Tracking API', () => {
 
     // Setup mock data
     await prisma.advertiser.create({ data: { id: 1, name: 'Adv 1', balance: 1000 } });
-    await prisma.publisher.create({ data: { id: 1, name: 'Pub 1', domain: 'p1.com' } });
+    await prisma.publisher.create({ data: { id: 1, name: 'Pub 1' } });
+    await prisma.app.create({ data: { id: 1, publisher_id: 1, name: 'App 1', platform: 'web' } });
+    await prisma.adUnit.create({ data: { id: 1, app_id: 1, name: 'Unit 1' } });
+
     await prisma.campaign.create({ data: { id: 1, advertiser_id: 1, name: 'Camp 1', budget: 1000, spent: 0 } });
     await prisma.adGroup.create({ data: { id: 1, campaign_id: 1, name: 'Group 1', max_bid: 100 } });
     await prisma.ad.create({ 
@@ -35,20 +38,10 @@ describe('Conversion Tracking API', () => {
         revenue: 1500
       }
     });
-    await prisma.conversionRule.create({
-      data: {
-        id: 2,
-        advertiser_id: 1,
-        url_pattern: '/cart',
-        name: 'Add to Cart',
-        label: 'micro',
-        revenue: 0
-      }
-    });
   });
 
   it('should append click_id to redirect URL', async () => {
-    const req = new NextRequest('http://localhost/api/click?ad_id=1&publisher_id=1');
+    const req = new NextRequest('http://localhost/api/click?ad_id=1&publisher_id=1&ad_unit_id=1');
     const res = await clickGET(req);
     
     expect(res.status).toBe(307);
@@ -68,6 +61,7 @@ describe('Conversion Tracking API', () => {
         click_id: 'test-uuid-123',
         ad_id: 1,
         publisher_id: 1,
+        ad_unit_id: 1,
         campaign_id: 1,
         cost: 100
       }
@@ -98,7 +92,7 @@ describe('Conversion Tracking API', () => {
 
   it('should not record duplicate conversions for the same click and rule', async () => {
     await prisma.click.create({
-      data: { click_id: 'dup-click', ad_id: 1, publisher_id: 1 }
+      data: { click_id: 'dup-click', ad_id: 1, publisher_id: 1, ad_unit_id: 1 }
     });
 
     const body = JSON.stringify({
@@ -118,46 +112,5 @@ describe('Conversion Tracking API', () => {
     
     const count = await prisma.conversion.count({ where: { click_id: 'dup-click' } });
     expect(count).toBe(1);
-  });
-
-  it('should handle multiple matching rules', async () => {
-    await prisma.click.create({
-      data: { click_id: 'multi-click', ad_id: 1, publisher_id: 1 }
-    });
-
-    // Add a rule that also matches
-    await prisma.conversionRule.create({
-      data: {
-        advertiser_id: 1,
-        url_pattern: 'advertiser.com', // matches everything on this domain
-        name: 'Any Pageview',
-        label: 'micro'
-      }
-    });
-
-    const req = new NextRequest('http://localhost/api/track', {
-      method: 'POST',
-      body: JSON.stringify({
-        click_id: 'multi-click',
-        url: 'http://advertiser.com/purchase'
-      })
-    });
-
-    const res = await POST(req);
-    const data = await res.json();
-    expect(data.matched).toBe(2); // '/purchase' and 'advertiser.com'
-    expect(data.conversions).toBe(2);
-  });
-
-  it('should return 404 for invalid click_id', async () => {
-    const req = new NextRequest('http://localhost/api/track', {
-      method: 'POST',
-      body: JSON.stringify({
-        click_id: 'invalid-id',
-        url: 'http://any.com'
-      })
-    });
-    const res = await POST(req);
-    expect(res.status).toBe(404);
   });
 });

@@ -14,6 +14,105 @@ const ProfileUpdateSchema = z.object({
   category: z.string().optional().nullable().transform(v => v === "" ? null : v),
 });
 
+const AppSchema = z.object({
+  publisher_id: z.coerce.number().int().positive(),
+  name: z.string().min(1, "App name is required"),
+  domain: z.string().optional().nullable(),
+  bundle_id: z.string().optional().nullable(),
+  platform: z.enum(["web", "ios", "android"]),
+});
+
+const AdUnitSchema = z.object({
+  app_id: z.coerce.number().int().positive(),
+  name: z.string().min(1, "Unit name is required"),
+  ad_type: z.enum(["banner", "interstitial"]),
+  width: z.coerce.number().int().positive().nullable().optional(),
+  height: z.coerce.number().int().positive().nullable().optional(),
+});
+
+export async function createApp(formData: FormData) {
+  const data = Object.fromEntries(formData.entries());
+  const parsed = AppSchema.safeParse(data);
+
+  if (!parsed.success) {
+    console.error(parsed.error.issues);
+    return { success: false, error: "Invalid app data" };
+  }
+
+  const { publisher_id, name, domain, bundle_id, platform } = parsed.data;
+  const session = await auth();
+  const user = session?.user as any;
+
+  if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== publisher_id)) {
+    return { success: false, error: "Forbidden" };
+  }
+
+  await prisma.app.create({
+    data: { publisher_id, name, domain, bundle_id, platform }
+  });
+
+  revalidatePath(`/publisher/${publisher_id}`);
+  return { success: true };
+}
+
+export async function deleteApp(formData: FormData) {
+  const appId = parseInt(formData.get("app_id") as string, 10);
+  const publisherId = parseInt(formData.get("publisher_id") as string, 10);
+  
+  const session = await auth();
+  const user = session?.user as any;
+  if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== publisherId)) {
+    return { success: false, error: "Forbidden" };
+  }
+
+  await prisma.app.delete({ where: { id: appId } });
+  revalidatePath(`/publisher/${publisherId}`);
+  return { success: true };
+}
+
+export async function createAdUnit(formData: FormData) {
+  const data = Object.fromEntries(formData.entries());
+  const parsed = AdUnitSchema.safeParse(data);
+
+  if (!parsed.success) {
+    console.error(parsed.error.issues);
+    return { success: false, error: "Invalid ad unit data" };
+  }
+
+  const { app_id, name, ad_type, width, height } = parsed.data;
+  
+  const app = await prisma.app.findUnique({ where: { id: app_id } });
+  if (!app) return { success: false, error: "App not found" };
+
+  const session = await auth();
+  const user = session?.user as any;
+  if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== app.publisher_id)) {
+    return { success: false, error: "Forbidden" };
+  }
+
+  await prisma.adUnit.create({
+    data: { app_id, name, ad_type, width, height }
+  });
+
+  revalidatePath(`/publisher/${app.publisher_id}`);
+  return { success: true };
+}
+
+export async function deleteAdUnit(formData: FormData) {
+  const adUnitId = parseInt(formData.get("ad_unit_id") as string, 10);
+  const publisherId = parseInt(formData.get("publisher_id") as string, 10);
+
+  const session = await auth();
+  const user = session?.user as any;
+  if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== publisherId)) {
+    return { success: false, error: "Forbidden" };
+  }
+
+  await prisma.adUnit.delete({ where: { id: adUnitId } });
+  revalidatePath(`/publisher/${publisherId}`);
+  return { success: true };
+}
+
 export async function updatePublisherProfile(formData: FormData) {
   const data = Object.fromEntries(formData.entries());
   const parsed = ProfileUpdateSchema.safeParse(data);

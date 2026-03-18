@@ -26,6 +26,22 @@ export default async function AdminDashboard() {
     orderBy: { name: 'asc' }
   });
   const publishers = await prisma.publisher.findMany({
+    include: {
+      _count: {
+        select: {
+          apps: true,
+        }
+      },
+      apps: {
+        include: {
+          _count: {
+            select: {
+              adUnits: true
+            }
+          }
+        }
+      }
+    },
     orderBy: { name: 'asc' }
   });
   
@@ -267,28 +283,33 @@ export default async function AdminDashboard() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Publisher</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Publisher / Inventory</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase text-right">Balance</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase text-center">Rev Share</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {publishers.map((pub) => (
-                    <tr key={pub.id}>
-                      <td className="px-4 py-4">
-                        <div className="text-sm font-bold text-gray-900">{pub.name}</div>
-                        <div className="text-[10px] text-gray-400">{pub.domain}</div>
-                      </td>
-                      <td className="px-4 py-4 text-sm font-mono text-right text-gray-600">¥{pub.balance.toLocaleString()}</td>
-                      <td className="px-4 py-4">
-                        <form action={updateRevShare} className="flex gap-2 justify-center">
-                          <input type="hidden" name="publisher_id" value={pub.id} />
-                          <input type="number" name="rev_share" defaultValue={pub.rev_share} step="0.01" min="0" max="1" className="w-16 border rounded text-xs p-1 text-center" />
-                          <button type="submit" className="bg-slate-700 text-white px-2 py-1 rounded text-[10px] font-bold">Set</button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
+                  {publishers.map((pub) => {
+                    const adUnitCount = pub.apps.reduce((acc, app) => acc + (app as any)._count.adUnits, 0);
+                    return (
+                      <tr key={pub.id}>
+                        <td className="px-4 py-4">
+                          <div className="text-sm font-bold text-gray-900">{pub.name}</div>
+                          <div className="text-[10px] text-gray-400 uppercase tracking-tighter">
+                            {pub._count.apps} Apps • {adUnitCount} Ad Units
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-sm font-mono text-right text-gray-600">¥{pub.balance.toLocaleString()}</td>
+                        <td className="px-4 py-4">
+                          <form action={updateRevShare} className="flex gap-2 justify-center">
+                            <input type="hidden" name="publisher_id" value={pub.id} />
+                            <input type="number" name="rev_share" defaultValue={pub.rev_share} step="0.01" min="0" max="1" className="w-16 border rounded text-xs p-1 text-center" />
+                            <button type="submit" className="bg-slate-700 text-white px-2 py-1 rounded text-[10px] font-bold">Set</button>
+                          </form>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

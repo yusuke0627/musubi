@@ -10,7 +10,7 @@ describe('GET /api/ads.txt', () => {
 
     // Insert mock publisher
     await prisma.publisher.create({
-      data: { id: 1, name: 'Test Publisher', domain: 'test.com' }
+      data: { id: 1, name: 'Test Publisher' }
     });
   });
 
