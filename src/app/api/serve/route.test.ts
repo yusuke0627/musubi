@@ -31,26 +31,41 @@ describe('GET /api/serve', () => {
     expect(res.status).toBe(404);
   });
 
-  it('should serve an ad and record an impression with ad_unit_id', async () => {
+  it('should return ad HTML with a tracking pixel but NOT record impression immediately', async () => {
     const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
       headers: { 'user-agent': 'Mozilla/5.0', 'x-forwarded-for': '1.2.3.4' }
     });
     
     const res = await GET(req);
     expect(res.status).toBe(200);
-    expect(res.headers.get('Content-Type')).toBe('text/html');
     
     const html = await res.text();
     expect(html).toContain('Ad 1');
-    expect(html).toContain('http://img.com');
-    // Verify click URL contains ad_unit_id
+    // Verify tracking pixel is present
+    expect(html).toContain('/api/impression?ad_id=1');
+    expect(html).not.toContain('publisher_id='); // Should be hidden
     expect(html).toContain('ad_unit_id=1');
+
+    // Verify impression is NOT recorded yet
+    const impCount = await prisma.impression.count();
+    expect(impCount).toBe(0);
+  });
+
+  it('should record an impression when the tracking pixel is requested', async () => {
+    const { GET: pixelGET } = await import('../impression/route');
+    const pixelReq = new NextRequest('http://localhost/api/impression?ad_id=1&ad_unit_id=1', {
+      headers: { 'user-agent': 'Mozilla/5.0', 'x-forwarded-for': '5.6.7.8' }
+    });
+
+    const res = await pixelGET(pixelReq);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('image/gif');
 
     // Verify impression record
     const imp = await prisma.impression.findFirst({ where: { ad_id: 1, ad_unit_id: 1 } });
     expect(imp).toBeDefined();
     expect(imp?.publisher_id).toBe(1);
-    expect(imp?.ip_address).toBe('1.2.3.4');
+    expect(imp?.ip_address).toBe('5.6.7.8');
   });
 
   it('should return 204 if no matching ad is found', async () => {

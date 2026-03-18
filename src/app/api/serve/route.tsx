@@ -114,17 +114,6 @@ export async function GET(req: NextRequest) {
     return new NextResponse(null, { status: 204 });
   }
 
-  // インプレッションを記録
-  await prisma.impression.create({
-    data: {
-      ad_id: ad.id,
-      publisher_id: publisherId,
-      ad_unit_id: adUnitId,
-      user_agent: ua,
-      ip_address: ip,
-    }
-  });
-
   // Reactコンポーネントを使用して安全なHTMLを生成 (自動エスケープによるXSS対策)
   const { renderToStaticMarkup } = await import('react-dom/server');
   const AdCreative = (await import('@/components/AdCreative')).default;
@@ -132,12 +121,26 @@ export async function GET(req: NextRequest) {
   // Safe URL building
   const clickUrlObj = new URL(`${new URL(req.url).origin}/api/click`);
   clickUrlObj.searchParams.set("ad_id", ad.id.toString());
-  clickUrlObj.searchParams.set("publisher_id", publisherId.toString());
   clickUrlObj.searchParams.set("ad_unit_id", adUnitId.toString());
   const clickUrl = clickUrlObj.toString();
 
+  // Tracking Pixel URL
+  const pixelUrlObj = new URL(`${new URL(req.url).origin}/api/impression`);
+  pixelUrlObj.searchParams.set("ad_id", ad.id.toString());
+  pixelUrlObj.searchParams.set("ad_unit_id", adUnitId.toString());
+  const pixelUrl = pixelUrlObj.toString();
+
   const adHtml = renderToStaticMarkup(
-    <AdCreative ad={ad} clickUrl={clickUrl} />
+    <>
+      <AdCreative ad={ad} clickUrl={clickUrl} />
+      <img 
+        src={pixelUrl} 
+        width="1" 
+        height="1" 
+        style={{ display: 'none' }} 
+        alt="" 
+      />
+    </>
   );
 
   return new NextResponse(`<!DOCTYPE html><html><body style="margin:0;">${adHtml}</body></html>`, {

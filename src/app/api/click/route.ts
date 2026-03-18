@@ -4,26 +4,30 @@ import prisma from "@/lib/db";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const adIdParam = searchParams.get("ad_id");
-  const publisherIdParam = searchParams.get("publisher_id");
   const adUnitIdParam = searchParams.get("ad_unit_id");
   
-  if (!adIdParam) {
-    return new NextResponse("ad_id is required", { status: 400 });
+  if (!adIdParam || !adUnitIdParam) {
+    return new NextResponse("ad_id and ad_unit_id are required", { status: 400 });
   }
 
   const adId = parseInt(adIdParam, 10);
-  const publisherId = publisherIdParam ? parseInt(publisherIdParam, 10) : 0;
-  const adUnitId = adUnitIdParam ? parseInt(adUnitIdParam, 10) : null;
+  const adUnitId = parseInt(adUnitIdParam, 10);
   const ua = req.headers.get("user-agent") || "";
   const ip = req.headers.get("x-forwarded-for") || "unknown";
 
   try {
-    const ad = await prisma.ad.findUnique({
-      where: { id: adId },
-      include: { adGroup: { include: { campaign: true } } }
-    });
+    const [ad, adUnit] = await Promise.all([
+      prisma.ad.findUnique({
+        where: { id: adId },
+        include: { adGroup: { include: { campaign: true } } }
+      }),
+      prisma.adUnit.findUnique({
+        where: { id: adUnitId },
+        include: { app: true }
+      })
+    ]);
 
-    if (ad) {
+    if (ad && adUnit) {
       const clickId = crypto.randomUUID();
 
       // 未処理のクリックとしてログ挿入
@@ -31,7 +35,7 @@ export async function GET(req: NextRequest) {
         data: {
           click_id: clickId,
           ad_id: adId,
-          publisher_id: publisherId,
+          publisher_id: adUnit.app.publisher_id,
           ad_unit_id: adUnitId,
           campaign_id: ad.adGroup.campaign.id,
           cost: ad.adGroup.max_bid,
