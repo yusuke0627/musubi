@@ -3,7 +3,7 @@ import { getDailyStats } from "@/services/stats";
 import Link from "next/link";
 import { notFound, forbidden } from "next/navigation";
 import StatsChart from "@/components/StatsChart";
-import { requestPayout, updatePublisherProfile } from "./actions";
+import { requestPayout, updatePublisherProfile, createApp, deleteApp, createAdUnit, deleteAdUnit } from "./actions";
 import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
@@ -18,205 +18,204 @@ export default async function PublisherDashboard({ params }: PageProps) {
   const session = await auth();
   const user = session?.user as any;
 
-  // Authorization check (IDOR Protection)
   if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== id)) {
     return forbidden();
   }
 
   const publisher = await prisma.publisher.findUnique({
-    where: { id }
+    where: { id },
+    include: {
+      apps: {
+        include: {
+          adUnits: true
+        }
+      }
+    }
   });
 
   if (!publisher) return notFound();
 
-  const impressionsCount = await prisma.impression.count({
-    where: { publisher_id: id }
-  });
-  const clicksCount = await prisma.click.count({
-    where: { publisher_id: id, is_valid: 1 }
-  });
-
-  const payouts = await prisma.payout.findMany({
-    where: { publisher_id: id },
-    orderBy: { created_at: 'desc' }
-  });
+  const impressionsCount = await prisma.impression.count({ where: { publisher_id: id } });
+  const clicksCount = await prisma.click.count({ where: { publisher_id: id, is_valid: 1 } });
+  const payouts = await prisma.payout.findMany({ where: { publisher_id: id }, orderBy: { created_at: 'desc' } });
   const dailyStats = await getDailyStats({ publisherId: id.toString() }) as any[];
 
-  // トレンド計算 (昨日 vs 今日)
-  const todayStats = dailyStats[dailyStats.length - 1];
-  const yesterdayStats = dailyStats[dailyStats.length - 2];
-  const todayEarnings = todayStats?.earnings || 0;
-  const yesterdayEarnings = yesterdayStats?.earnings || 0;
-  const earningsDiff = todayEarnings - yesterdayEarnings;
-  const earningsTrend = yesterdayEarnings > 0 ? (earningsDiff / yesterdayEarnings) * 100 : 0;
-
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-5xl mx-auto">
-        <header className="flex justify-between items-center border-b pb-6 mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Publisher: {publisher.name}</h1>
-          <Link href="/" className="text-blue-600 hover:underline">← Back to Portal</Link>
+    <div className="min-h-screen bg-slate-50 p-8">
+      <div className="max-w-6xl mx-auto space-y-12">
+        <header className="flex justify-between items-center border-b pb-6">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Publisher: {publisher.name}</h1>
+            <p className="text-sm text-slate-500 mt-1">Manage your apps, ad units and track earnings.</p>
+          </div>
+          <Link href="/" className="text-blue-600 hover:underline font-bold">← Back to Portal</Link>
         </header>
 
-        <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
-            <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Impressions</h3>
-            <div className="text-2xl font-bold text-gray-900">{impressionsCount.toLocaleString()}</div>
+        {/* Overview Stats */}
+        <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total Impressions</h3>
+            <div className="text-3xl font-black text-slate-900">{impressionsCount.toLocaleString()}</div>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
-            <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Clicks</h3>
-            <div className="text-2xl font-bold text-gray-900">{clicksCount.toLocaleString()}</div>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Valid Clicks</h3>
+            <div className="text-3xl font-black text-slate-900">{clicksCount.toLocaleString()}</div>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
-            <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Current Balance</h3>
-            <div className="text-2xl font-bold text-emerald-600">¥{publisher.balance.toLocaleString()}</div>
+          <div className="bg-emerald-50 p-6 rounded-2xl shadow-sm border border-emerald-100 text-center">
+            <h3 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Current Balance</h3>
+            <div className="text-3xl font-black text-emerald-700">¥{publisher.balance.toLocaleString()}</div>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center">
-            <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Today's Earnings</h3>
-            <div className="text-2xl font-bold text-gray-900">¥{todayEarnings.toLocaleString()}</div>
-            {yesterdayEarnings > 0 && (
-              <div className={`text-xs font-bold mt-1 ${earningsDiff >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {earningsDiff >= 0 ? '↑' : '↓'} {Math.abs(earningsTrend).toFixed(1)}% vs yesterday
-              </div>
-            )}
+          <div className="bg-blue-50 p-6 rounded-2xl shadow-sm border border-blue-100 text-center">
+            <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">Revenue Share</h3>
+            <div className="text-3xl font-black text-blue-700">{publisher.rev_share * 100}%</div>
           </div>
         </section>
 
-        <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-          <h2 className="text-xl font-bold mb-6 text-gray-800">Performance Over Time</h2>
+        <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+          <h2 className="text-xl font-black mb-6 text-slate-800 tracking-tight">Performance History</h2>
           <StatsChart data={dailyStats} />
         </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          {/* Profile Settings & Payout */}
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h2 className="text-xl font-bold mb-4 text-gray-800">Profile Settings</h2>
-            <form action={async (formData) => {
-              "use server";
-              await updatePublisherProfile(formData);
-            }} className="flex flex-col gap-4 mb-8">
-              <input type="hidden" name="publisher_id" value={publisher.id} />
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Publisher Category</label>
-                <p className="text-xs text-gray-500 mb-2">広告のコンテキストマッチングに使用されます。あなたのサイトの主ジャンルを選んでください。</p>
-                <select 
-                  name="category" 
-                  defaultValue={publisher.category || ""}
-                  className="w-full p-2 border border-gray-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-emerald-100 text-slate-900 font-medium"
-                >
-                  <option value="">Any Category</option>
-                  <option value="anime">Anime & Manga</option>
-                  <option value="game">Games</option>
-                  <option value="tech">Technology</option>
-                  <option value="lifestyle">Lifestyle</option>
-                  <option value="business">Business</option>
-                </select>
-              </div>
-              <button
-                type="submit"
-                className="w-full py-2 px-4 rounded-lg font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-colors"
-              >
-                Save Settings
-              </button>
-            </form>
-
-            <h2 className="text-xl font-bold mb-4 text-gray-800">Payout</h2>
-            <div className="bg-gray-50 p-4 rounded-lg flex flex-col gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Minimum Payout: <strong>¥1,000</strong></p>
-                {publisher.balance < 1000 && (
-                  <p className="text-xs text-red-500 mt-1">
-                    You need ¥{(1000 - publisher.balance).toLocaleString()} more to request a payout.
-                  </p>
-                )}
-              </div>
-              <form action={async (formData) => {
-                "use server";
-                await requestPayout(formData);
-              }}>
-                <input type="hidden" name="publisher_id" value={publisher.id} />
-                <button
-                  type="submit"
-                  disabled={publisher.balance < 1000}
-                  className={`w-full py-3 px-4 rounded-lg font-bold transition-colors ${
-                    publisher.balance < 1000
-                      ? 'bg-gray-300 cursor-not-allowed text-gray-500'
-                      : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md'
-                  }`}
-                >
-                  Request Payout
-                </button>
-              </form>
+        {/* App & Ad Unit Management */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <section className="lg:col-span-2 space-y-8">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight text-center">Apps & Ad Units</h2>
             </div>
 
-            <h3 className="text-lg font-bold mt-8 mb-4 text-gray-800">Payout History</h3>
-            <div className="overflow-hidden border rounded-lg">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <tr>
-                    <th className="px-4 py-3 text-left">Date</th>
-                    <th className="px-4 py-3 text-left">Amount</th>
-                    <th className="px-4 py-3 text-left">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200 text-sm">
-                  {payouts.map((p) => (
-                    <tr key={p.id}>
-                      <td className="px-4 py-3 whitespace-nowrap">{new Date(p.created_at).toLocaleDateString('ja-JP')}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900">¥{p.amount.toLocaleString()}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded text-xs font-bold ${
-                          p.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                        }`}>
-                          {p.status.toUpperCase()}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {payouts.length === 0 && (
-                    <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-400 italic">No payout history.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            {publisher.apps.length === 0 && (
+              <div className="bg-white p-12 rounded-2xl border-2 border-dashed border-slate-200 text-center">
+                <p className="text-slate-400 font-medium">No apps registered yet. Add your first app to start serving ads!</p>
+              </div>
+            )}
+
+            {publisher.apps.map(app => (
+              <div key={app.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-black text-slate-900">{app.name}</h3>
+                      <span className="px-2 py-0.5 bg-slate-200 text-slate-600 rounded text-[10px] font-bold uppercase">{app.platform}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-mono">{app.domain || app.bundle_id}</p>
+                  </div>
+                  <form action={deleteApp}>
+                    <input type="hidden" name="app_id" value={app.id} />
+                    <input type="hidden" name="publisher_id" value={publisher.id} />
+                    <button type="submit" className="text-slate-300 hover:text-red-500 transition-colors">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  </form>
+                </div>
+                
+                <div className="p-6 space-y-4">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Ad Units</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {app.adUnits.map(unit => (
+                      <div key={unit.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 group relative">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <div className="text-sm font-bold text-slate-800">{unit.name}</div>
+                            <div className="text-[10px] font-mono text-slate-400">ID: {unit.id} • {unit.width}x{unit.height}</div>
+                          </div>
+                          <form action={deleteAdUnit}>
+                            <input type="hidden" name="ad_unit_id" value={unit.id} />
+                            <input type="hidden" name="publisher_id" value={publisher.id} />
+                            <button type="submit" className="text-slate-200 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          </form>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-slate-100">
+                          <label className="block text-[8px] font-black text-slate-400 uppercase mb-1">Ad Tag (iframe)</label>
+                          <code className="text-[9px] bg-slate-900 text-emerald-400 p-2 rounded block overflow-x-auto font-mono">
+                            {`<iframe src="http://localhost:3000/api/serve?ad_unit_id=${unit.id}" width="${unit.width}" height="${unit.height}" frameborder="0"></iframe>`}
+                          </code>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Add Ad Unit Card */}
+                    <form action={createAdUnit} className="p-4 rounded-xl border-2 border-dashed border-slate-200 flex flex-col justify-center items-center gap-2 hover:border-blue-300 transition-colors">
+                      <input type="hidden" name="app_id" value={app.id} />
+                      <div className="flex gap-2 w-full">
+                        <input type="text" name="name" placeholder="Unit Name" className="flex-1 text-xs p-1.5 border rounded" required />
+                        <select name="ad_type" className="text-xs p-1.5 border rounded bg-white">
+                          <option value="banner">Banner</option>
+                          <option value="interstitial">Interstitial</option>
+                        </select>
+                      </div>
+                      <div className="flex gap-2 w-full">
+                        <input type="number" name="width" placeholder="Width" className="w-full text-xs p-1.5 border rounded" defaultValue={300} />
+                        <input type="number" name="height" placeholder="Height" className="w-full text-xs p-1.5 border rounded" defaultValue={250} />
+                      </div>
+                      <button type="submit" className="w-full py-1.5 bg-slate-800 text-white rounded text-[10px] font-bold uppercase hover:bg-slate-700">+ Add Ad Unit</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            ))}
           </section>
 
-          {/* Integration Section */}
-          <div className="flex flex-col gap-8">
-            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-              <h2 className="text-xl font-bold mb-4 text-gray-800">ads.txt Configuration</h2>
-              <p className="text-sm text-gray-600 mb-4">
-                プラットフォームの透明性を高めるため、以下のリンクからあなたの <code>ads.txt</code> を取得し、あなたのサイトのルートディレクトリに配置してください。
-              </p>
-              <div className="bg-gray-50 p-4 rounded-lg flex items-center justify-between border">
-                <code className="text-sm text-gray-800 truncate">
-                  /api/ads.txt?publisher_id={publisher.id}
-                </code>
-                <a 
-                  href={`/api/ads.txt?publisher_id=${publisher.id}`} 
-                  target="_blank"
-                  className="ml-4 text-sm font-medium text-blue-600 hover:text-blue-800 whitespace-nowrap"
-                >
-                  View ads.txt ↗
-                </a>
-              </div>
+          {/* Sidebar Actions */}
+          <aside className="space-y-8">
+            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+              <h2 className="text-lg font-black mb-4 text-slate-800 tracking-tight">Register New App</h2>
+              <form action={createApp} className="space-y-4">
+                <input type="hidden" name="publisher_id" value={publisher.id} />
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">App Name</label>
+                  <input type="text" name="name" placeholder="e.g. My Tech Blog" className="w-full p-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-100 outline-none" required />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Platform</label>
+                  <select name="platform" className="w-full p-2.5 border border-slate-200 rounded-xl text-sm bg-white outline-none">
+                    <option value="web">Web (Domain)</option>
+                    <option value="ios">iOS (App Store)</option>
+                    <option value="android">Android (Play Store)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Identifier (Domain/Bundle)</label>
+                  <input type="text" name="domain" placeholder="example.com or com.myapp" className="w-full p-2.5 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-blue-100 outline-none" />
+                </div>
+                <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-black text-xs uppercase shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">Add App</button>
+              </form>
             </section>
 
-            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-              <h2 className="text-xl font-bold mb-4 text-gray-800">Ad Tag Integration</h2>
-              <p className="text-sm text-gray-600 mb-4">下記のタグをあなたのサイト (<code>{publisher.domain}</code>) に埋め込んでください。</p>
-              <pre className="bg-gray-900 text-emerald-400 p-4 rounded-lg text-xs overflow-x-auto font-mono">
-                {`<iframe src="http://localhost:3000/api/serve?publisher_id=${publisher.id}" width="300" height="250" frameborder="0"></iframe>`}
-              </pre>
+            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+              <h2 className="text-lg font-black mb-4 text-slate-800 tracking-tight">Publisher Profile</h2>
+              <form action={updatePublisherProfile} className="space-y-4">
+                <input type="hidden" name="publisher_id" value={publisher.id} />
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Site Category</label>
+                  <select name="category" defaultValue={publisher.category || ""} className="w-full p-2.5 border border-slate-200 rounded-xl text-sm bg-white outline-none">
+                    <option value="">Any Category</option>
+                    <option value="anime">Anime & Manga</option>
+                    <option value="game">Games</option>
+                    <option value="tech">Technology</option>
+                    <option value="lifestyle">Lifestyle</option>
+                    <option value="business">Business</option>
+                  </select>
+                </div>
+                <button type="submit" className="w-full py-2 border border-slate-200 rounded-xl font-bold text-xs text-slate-600 hover:bg-slate-50 transition-all">Save Changes</button>
+              </form>
             </section>
 
-            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-              <h2 className="text-xl font-bold mb-4 text-gray-800">Live Preview</h2>
-              <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 flex items-center justify-center bg-white min-h-[300px]">
-                <iframe src={`/api/serve?publisher_id=${publisher.id}`} width="320" height="260" frameBorder="0"></iframe>
+            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+              <h2 className="text-lg font-black mb-4 text-slate-800 tracking-tight">Payout</h2>
+              <div className="bg-slate-50 p-4 rounded-xl space-y-4">
+                <div className="flex justify-between items-end">
+                  <span className="text-[10px] font-black text-slate-400 uppercase">Min. Payout</span>
+                  <span className="text-sm font-bold text-slate-700">¥1,000</span>
+                </div>
+                <form action={requestPayout}>
+                  <input type="hidden" name="publisher_id" value={publisher.id} />
+                  <button type="submit" disabled={publisher.balance < 1000} className={`w-full py-3 rounded-xl font-black text-xs uppercase shadow-md transition-all ${publisher.balance < 1000 ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-100'}`}>Request Payout</button>
+                </form>
               </div>
             </section>
-          </div>
+          </aside>
         </div>
       </div>
     </div>

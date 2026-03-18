@@ -5,6 +5,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const adIdParam = searchParams.get("ad_id");
   const publisherIdParam = searchParams.get("publisher_id");
+  const adUnitIdParam = searchParams.get("ad_unit_id");
   
   if (!adIdParam) {
     return new NextResponse("ad_id is required", { status: 400 });
@@ -12,13 +13,14 @@ export async function GET(req: NextRequest) {
 
   const adId = parseInt(adIdParam, 10);
   const publisherId = publisherIdParam ? parseInt(publisherIdParam, 10) : 0;
+  const adUnitId = adUnitIdParam ? parseInt(adUnitIdParam, 10) : null;
   const ua = req.headers.get("user-agent") || "";
   const ip = req.headers.get("x-forwarded-for") || "unknown";
 
   try {
     const ad = await prisma.ad.findUnique({
       where: { id: adId },
-      select: { target_url: true }
+      include: { adGroup: { include: { campaign: true } } }
     });
 
     if (ad) {
@@ -30,6 +32,10 @@ export async function GET(req: NextRequest) {
           click_id: clickId,
           ad_id: adId,
           publisher_id: publisherId,
+          ad_unit_id: adUnitId,
+          campaign_id: ad.adGroup.campaign.id,
+          cost: ad.adGroup.max_bid,
+          publisher_earnings: ad.adGroup.max_bid * 0.7, // Assume 70% share
           user_agent: ua,
           ip_address: ip,
           processed: 0,

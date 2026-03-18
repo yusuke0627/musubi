@@ -4,15 +4,28 @@ import { Prisma } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const publisherIdParam = searchParams.get("publisher_id");
+  const adUnitIdParam = searchParams.get("ad_unit_id");
   
-  if (!publisherIdParam) {
-    return new NextResponse("publisher_id is required", { status: 400 });
+  if (!adUnitIdParam) {
+    return new NextResponse("ad_unit_id is required", { status: 400 });
   }
 
-  const publisherId = parseInt(publisherIdParam, 10);
+  const adUnitId = parseInt(adUnitIdParam, 10);
   const ua = req.headers.get("user-agent") || "";
   const ip = req.headers.get("x-forwarded-for") || "unknown";
+
+  // Get AdUnit and Publisher details
+  const adUnit = await prisma.adUnit.findUnique({
+    where: { id: adUnitId },
+    include: { app: { include: { publisher: true } } }
+  });
+
+  if (!adUnit) {
+    return new NextResponse("Ad Unit not found", { status: 404 });
+  }
+
+  const publisherId = adUnit.app.publisher_id;
+  const publisherCategory = adUnit.app.publisher.category;
   
   // 簡易デバイス判定
   const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
@@ -36,14 +49,13 @@ export async function GET(req: NextRequest) {
       JOIN ad_groups ON ads.ad_group_id = ad_groups.id
       JOIN campaigns ON ad_groups.campaign_id = campaigns.id
       JOIN advertisers ON campaigns.advertiser_id = advertisers.id
-      JOIN publishers ON publishers.id = ${publisherId}
       WHERE ads.status = 'approved'
         AND advertisers.balance >= ad_groups.max_bid
         -- カテゴリマッチング
         AND (
           ad_groups.target_category IS NULL 
           OR ad_groups.target_category = ''
-          OR ad_groups.target_category = publishers.category
+          OR ad_groups.target_category = ${publisherCategory}
         )
         -- キャンペーン予算チェック (Total)
         AND (campaigns.budget = 0 OR campaigns.spent < campaigns.budget)
@@ -107,6 +119,7 @@ export async function GET(req: NextRequest) {
     data: {
       ad_id: ad.id,
       publisher_id: publisherId,
+      ad_unit_id: adUnitId,
       user_agent: ua,
       ip_address: ip,
     }
@@ -120,6 +133,7 @@ export async function GET(req: NextRequest) {
   const clickUrlObj = new URL(`${new URL(req.url).origin}/api/click`);
   clickUrlObj.searchParams.set("ad_id", ad.id.toString());
   clickUrlObj.searchParams.set("publisher_id", publisherId.toString());
+  clickUrlObj.searchParams.set("ad_unit_id", adUnitId.toString());
   const clickUrl = clickUrlObj.toString();
 
   const adHtml = renderToStaticMarkup(

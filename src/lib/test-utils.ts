@@ -11,6 +11,8 @@ export async function clearDatabase() {
   await prisma.adSchedule.deleteMany();
   await prisma.adGroup.deleteMany();
   await prisma.campaign.deleteMany();
+  await prisma.adUnit.deleteMany();
+  await prisma.app.deleteMany();
   await prisma.publisher.deleteMany();
   await prisma.advertiser.deleteMany();
   await prisma.user.deleteMany();

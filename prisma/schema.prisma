@@ -23,17 +23,47 @@ model Advertiser {
 model Publisher {
   id             Int                        @id @default(autoincrement())
   name           String
-  domain         String
   category       String?
   balance        Float                      @default(0)
   total_earnings Float                      @default(0)
   rev_share      Float                      @default(0.7)
   payouts        Payout[]
+  apps           App[]
   targetGroups   AdGroupTargetPublisher[]
   impressions    Impression[]
   clicks         Click[]
 
   @@map("publishers")
+}
+
+model App {
+  id           Int       @id @default(autoincrement())
+  publisher_id Int
+  name         String
+  domain       String?   // For Web
+  bundle_id    String?   // For Mobile
+  platform     String    @default("web") // web, ios, android
+  created_at   DateTime  @default(now())
+  publisher    Publisher @relation(fields: [publisher_id], references: [id])
+  adUnits      AdUnit[]
+
+  @@map("apps")
+}
+
+model AdUnit {
+  id          Int          @id @default(autoincrement())
+  app_id      Int
+  name        String
+  ad_type     String       @default("banner") // banner, interstitial
+  width       Int?         // e.g., 300
+  height      Int?         // e.g., 250
+  status      String       @default("active")
+  created_at  DateTime     @default(now())
+  app         App          @relation(fields: [app_id], references: [id])
+  impressions Impression[]
+  clicks      Click[]
+
+  @@map("ad_units")
 }
 
 model User {
@@ -132,11 +162,13 @@ model Impression {
   id           Int       @id @default(autoincrement())
   ad_id        Int
   publisher_id Int
+  ad_unit_id   Int?
   user_agent   String?
   ip_address   String?
   created_at   DateTime  @default(now())
   ad           Ad        @relation(fields: [ad_id], references: [id])
   publisher    Publisher @relation(fields: [publisher_id], references: [id])
+  adUnit       AdUnit?   @relation(fields: [ad_unit_id], references: [id])
 
   @@map("impressions")
 }
@@ -146,6 +178,7 @@ model Click {
   click_id           String?   @unique
   ad_id              Int
   publisher_id       Int
+  ad_unit_id         Int?
   campaign_id        Int?
   user_agent         String?
   ip_address         String?
@@ -157,6 +190,7 @@ model Click {
   created_at         DateTime  @default(now())
   ad                 Ad        @relation(fields: [ad_id], references: [id])
   publisher          Publisher @relation(fields: [publisher_id], references: [id])
+  adUnit             AdUnit?   @relation(fields: [ad_unit_id], references: [id])
   campaign           Campaign? @relation(fields: [campaign_id], references: [id])
   conversions        Conversion[]
 
