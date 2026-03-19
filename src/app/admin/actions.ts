@@ -41,6 +41,21 @@ export async function processClicks() {
   }
 }
 
+// 全キャンペーンの日次予算リセット
+export async function resetDailyBudgets() {
+  try {
+    await checkAdmin();
+    await prisma.campaign.updateMany({
+      data: { today_spent: 0 }
+    });
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (err) {
+    console.error("Reset error:", err);
+    return { success: false, error: "Failed to reset daily budgets" };
+  }
+}
+
 // 支払い完了処理
 export async function completePayout(formData: FormData) {
   const data = Object.fromEntries(formData.entries());

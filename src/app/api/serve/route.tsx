@@ -59,19 +59,8 @@ export async function GET(req: NextRequest) {
         )
         -- キャンペーン予算チェック (Total)
         AND (campaigns.budget = 0 OR campaigns.spent < campaigns.budget)
-        -- キャンペーン予算チェック (Daily)
-        AND (
-          campaigns.daily_budget = 0 
-          OR (
-            SELECT COALESCE(SUM(cost), 0) 
-            FROM clicks 
-            JOIN ads a2 ON clicks.ad_id = a2.id
-            JOIN ad_groups ag2 ON a2.ad_group_id = ag2.id
-            WHERE ag2.campaign_id = campaigns.id 
-              AND clicks.is_valid = 1 
-              AND DATE(clicks.created_at) = DATE(${todayStr})
-          ) < campaigns.daily_budget
-        )
+        -- キャンペーン予算チェック (Daily) - 高速なカラム比較に変更
+        AND (campaigns.daily_budget = 0 OR campaigns.today_spent < campaigns.daily_budget)
         AND (ad_groups.target_device = 'all' OR ad_groups.target_device = ${currentDevice})
         -- 配信先チェック (is_all_publishers または 中間テーブルに存在するか)
         AND (

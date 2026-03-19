@@ -77,20 +77,7 @@ export async function runBillingWorker() {
 
         // 5. Daily Budget Check
         if (campaign.daily_budget > 0) {
-          const startOfDay = new Date(click.created_at);
-          startOfDay.setUTCHours(0, 0, 0, 0);
-
-          const dailySpent = await tx.click.aggregate({
-            where: {
-              ad: { adGroup: { campaign_id: campaignId } },
-              is_valid: 1,
-              created_at: { gte: startOfDay }
-            },
-            _sum: { cost: true }
-          });
-
-          const currentDailySpent = dailySpent._sum.cost || 0;
-          if ((currentDailySpent + maxBid) > campaign.daily_budget) {
+          if ((campaign.today_spent + maxBid) > campaign.daily_budget) {
             await tx.click.update({
               where: { id: click.id },
               data: { is_valid: 0, processed: 1, invalid_reason: 'Daily budget exceeded' }
@@ -111,10 +98,13 @@ export async function runBillingWorker() {
             data: { balance: { decrement: maxBid } }
           });
 
-          // キャンペーン消化額加算
+          // キャンペーン消化額加算 (累計 & 当日)
           await tx.campaign.update({
             where: { id: campaignId },
-            data: { spent: { increment: maxBid } }
+            data: { 
+              spent: { increment: maxBid },
+              today_spent: { increment: maxBid }
+            }
           });
 
           // パブリッシャー報酬加算
