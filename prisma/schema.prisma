@@ -88,22 +88,24 @@ model Payout {
 
   @@map("payouts")
 }
-
 model Campaign {
-  id            Int       @id @default(autoincrement())
+  id           Int        @id @default(autoincrement())
   advertiser_id Int
-  name          String
-  budget        Float     @default(0)
-  spent         Float     @default(0)
-  daily_budget  Float     @default(0)
-  start_date    DateTime  @default(now())
-  end_date      DateTime?
-  advertiser    Advertiser @relation(fields: [advertiser_id], references: [id])
-  adGroups      AdGroup[]
-  clicks        Click[]
+  name         String
+  budget       Float      @default(0) // Total budget
+  spent        Float      @default(0) // Total spent
+  daily_budget Float      @default(0) // Daily budget (0 = unlimited)
+  today_spent  Float      @default(0) // Spent today (reset daily)
+  start_date   DateTime?
+  end_date     DateTime?
+  created_at   DateTime   @default(now())
+  advertiser   Advertiser @relation(fields: [advertiser_id], references: [id])
+  adGroups     AdGroup[]
+  clicks       Click[]
 
   @@map("campaigns")
 }
+
 
 model AdSchedule {
   id          Int     @id @default(autoincrement())

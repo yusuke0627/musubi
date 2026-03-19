@@ -4,7 +4,7 @@ import { getAdminInsights } from "@/services/insights";
 import Link from "next/link";
 import StatsChart from "@/components/StatsChart";
 import InsightSection from "@/components/InsightSection";
-import { processClicks, completePayout, updateRevShare, reviewAd } from "./actions";
+import { processClicks, completePayout, updateRevShare, reviewAd, resetDailyBudgets } from "./actions";
 import { auth } from "@/auth";
 import { forbidden } from "next/navigation";
 
@@ -152,6 +152,14 @@ export default async function AdminDashboard() {
                 }}>
                   <button type="submit" className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors shadow-sm whitespace-nowrap">
                     Validate & Settle Clicks ({pendingClicks.length})
+                  </button>
+                </form>
+                <form action={async () => {
+                  "use server";
+                  await resetDailyBudgets();
+                }}>
+                  <button type="submit" className="bg-slate-200 hover:bg-slate-300 text-slate-600 px-4 py-2 rounded-lg font-bold text-sm transition-colors shadow-sm whitespace-nowrap">
+                    Reset Daily Spents
                   </button>
                 </form>
               </div>
