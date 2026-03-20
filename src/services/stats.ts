@@ -134,3 +134,45 @@ export async function getPlacementStats(advertiserId: string) {
     };
   }).sort((a, b) => b.impressions - a.impressions);
 }
+
+export async function getAdUnitStats(publisherId: string) {
+  const pubId = parseInt(publisherId, 10);
+
+  const adUnits = await prisma.adUnit.findMany({
+    where: { app: { publisher_id: pubId } },
+    include: {
+      app: {
+        select: { name: true }
+      },
+      _count: {
+        select: {
+          impressions: true,
+          clicks: {
+            where: { is_valid: 1 }
+          }
+        }
+      },
+      clicks: {
+        where: { is_valid: 1 },
+        select: {
+          publisher_earnings: true
+        }
+      }
+    }
+  });
+
+  return adUnits.map(unit => {
+    const revenue = unit.clicks.reduce((acc, curr) => acc + curr.publisher_earnings, 0);
+    return {
+      id: unit.id,
+      name: unit.name,
+      app_name: unit.app.name,
+      ad_type: unit.ad_type,
+      width: unit.width,
+      height: unit.height,
+      impressions: unit._count.impressions,
+      clicks: unit._count.clicks,
+      revenue: revenue
+    };
+  }).sort((a, b) => b.revenue - a.revenue); // 収益順にソートして返すよ！💰
+}

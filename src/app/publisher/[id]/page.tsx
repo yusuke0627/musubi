@@ -1,8 +1,9 @@
 import prisma from "@/lib/db";
-import { getDailyStats } from "@/services/stats";
+import { getDailyStats, getAdUnitStats } from "@/services/stats";
 import Link from "next/link";
 import { notFound, forbidden } from "next/navigation";
 import StatsChart from "@/components/StatsChart";
+import AdUnitPerformanceTable from "@/components/AdUnitPerformanceTable";
 import { requestPayout, updatePublisherProfile, createApp, deleteApp, createAdUnit, deleteAdUnit } from "./actions";
 import { auth } from "@/auth";
 
@@ -37,8 +38,8 @@ export default async function PublisherDashboard({ params }: PageProps) {
 
   const impressionsCount = await prisma.impression.count({ where: { publisher_id: id } });
   const clicksCount = await prisma.click.count({ where: { publisher_id: id, is_valid: 1 } });
-  const payouts = await prisma.payout.findMany({ where: { publisher_id: id }, orderBy: { created_at: 'desc' } });
   const dailyStats = await getDailyStats({ publisherId: id.toString() }) as any[];
+  const adUnitStats = await getAdUnitStats(id.toString());
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">
@@ -75,6 +76,9 @@ export default async function PublisherDashboard({ params }: PageProps) {
           <h2 className="text-xl font-black mb-6 text-slate-800 tracking-tight">Performance History</h2>
           <StatsChart data={dailyStats} />
         </section>
+
+        {/* Ad Unit Analysis Report */}
+        <AdUnitPerformanceTable stats={adUnitStats} />
 
         {/* App & Ad Unit Management */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

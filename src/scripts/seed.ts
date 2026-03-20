@@ -129,18 +129,25 @@ async function seed() {
     date.setDate(date.getDate() - (6 - i));
     date.setUTCHours(12, 0, 0, 0);
 
-    // Pub 1 (Unit 1): Increasing Trend
+    // Pub 1 (Unit 1): Increasing Trend - High Efficiency
     const pub1Count = (i + 1) * 100;
     await prisma.impression.createMany({ data: Array.from({ length: pub1Count }).map(() => ({ ad_id: 1, publisher_id: 1, ad_unit_id: 1, created_at: date })) });
-    for (let j = 0; j < Math.floor(pub1Count * 0.1); j++) {
-      await prisma.click.create({ data: { ad_id: 1, publisher_id: 1, ad_unit_id: 1, campaign_id: 1, cost: 100, publisher_earnings: 70, is_valid: 1, processed: 1, created_at: date } });
+    for (let j = 0; j < Math.floor(pub1Count * 0.15); j++) { // 15% CTR!
+      await prisma.click.create({ data: { ad_id: 1, publisher_id: 1, ad_unit_id: 1, campaign_id: 1, cost: 150, publisher_earnings: 105, is_valid: 1, processed: 1, created_at: date } });
     }
 
-    // Pub 2 (Unit 3): Decreasing Trend
+    // Pub 1 (Unit 2): Bottom Leaderboard - Lower CTR
+    const pub1Unit2Count = 200;
+    await prisma.impression.createMany({ data: Array.from({ length: pub1Unit2Count }).map(() => ({ ad_id: 1, publisher_id: 1, ad_unit_id: 2, created_at: date })) });
+    for (let j = 0; j < Math.floor(pub1Unit2Count * 0.02); j++) { // 2% CTR
+      await prisma.click.create({ data: { ad_id: 1, publisher_id: 1, ad_unit_id: 2, campaign_id: 1, cost: 100, publisher_earnings: 70, is_valid: 1, processed: 1, created_at: date } });
+    }
+
+    // Pub 2 (Unit 3): Article Mid - Average
     const pub2Count = (7 - i) * 100;
     await prisma.impression.createMany({ data: Array.from({ length: pub2Count }).map(() => ({ ad_id: 1, publisher_id: 2, ad_unit_id: 3, created_at: date })) });
-    for (let j = 0; j < Math.floor(pub2Count * 0.1); j++) {
-      await prisma.click.create({ data: { ad_id: 1, publisher_id: 2, ad_unit_id: 3, campaign_id: 1, cost: 100, publisher_earnings: 80, is_valid: 1, processed: 1, created_at: date } });
+    for (let j = 0; j < Math.floor(pub2Count * 0.05); j++) { // 5% CTR
+      await prisma.click.create({ data: { ad_id: 1, publisher_id: 2, ad_unit_id: 3, campaign_id: 1, cost: 120, publisher_earnings: 96, is_valid: 1, processed: 1, created_at: date } });
     }
   }
 
