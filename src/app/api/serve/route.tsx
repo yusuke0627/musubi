@@ -88,10 +88,7 @@ export async function GET(req: NextRequest) {
         )
     )
     SELECT ads.*, ad_groups.max_bid, ad_groups.targeting,
-      CASE 
-        WHEN s.imps < 5 THEN ad_groups.max_bid * 0.01
-        ELSE ad_groups.max_bid * (CAST(s.valid_clicks AS REAL) / s.imps)
-      END as score
+      ad_groups.max_bid * (CAST(s.valid_clicks + 1 AS REAL) / (s.imps + 100)) as score
     FROM ads
     JOIN ad_groups ON ads.ad_group_id = ad_groups.id
     JOIN ad_stats s ON ads.id = s.id
