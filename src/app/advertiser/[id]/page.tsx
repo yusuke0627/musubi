@@ -176,7 +176,16 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
               <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-slate-200">Musubi Verified</span>
             </div>
           </div>
-          <Link href="/" className="text-blue-600 hover:underline font-medium">← Back to Portal</Link>
+          <div className="flex flex-col items-end gap-3">
+            <Link href="/" className="text-blue-600 hover:underline font-medium text-sm">← Back to Portal</Link>
+            <Link 
+              href={`/advertiser/${id}/simulator`}
+              className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-black transition-all shadow-lg shadow-slate-200 flex items-center gap-2 text-sm"
+            >
+              <span>Auction Simulator</span>
+              <span className="text-base">🔬</span>
+            </Link>
+          </div>
         </header>
 
         {/* Stats & Transparency */}
