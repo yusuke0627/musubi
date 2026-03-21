@@ -160,12 +160,12 @@ model Ad {
 
   @@map("ads")
 }
-
 model Impression {
   id           Int       @id @default(autoincrement())
   ad_id        Int
   publisher_id Int
   ad_unit_id   Int?
+  imp_id       String?   @unique // Unique ID per ad serving
   user_agent   String?
   ip_address   String?
   created_at   DateTime  @default(now())
@@ -179,6 +179,7 @@ model Impression {
 model Click {
   id                 Int       @id @default(autoincrement())
   click_id           String?   @unique
+  imp_id             String?   // Linked to an impression
   ad_id              Int
   publisher_id       Int
   ad_unit_id         Int?

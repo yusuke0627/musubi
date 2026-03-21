@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import prisma from '../lib/db';
-import { isBotUserAgent, isRateLimited, isDuplicate } from './ivt';
+import { isBotUserAgent, isRateLimited, isDuplicate, isTooFastClick } from './ivt';
 import { clearDatabase } from '../lib/test-utils';
 
 describe('IVT Service (Invalid Traffic Detection)', () => {
@@ -23,17 +23,23 @@ describe('IVT Service (Invalid Traffic Detection)', () => {
   });
 
   describe('Database checks', () => {
+    let advertiser: any;
+    let publisher: any;
+    let campaign: any;
+    let adGroup: any;
+    let ad1: any;
+    let ad2: any;
+
     beforeEach(async () => {
       await clearDatabase();
       
       // Setup some basic dependent data
-      await prisma.advertiser.create({ data: { id: 1, name: 'Adv' } });
-      await prisma.publisher.create({ data: { id: 1, name: 'Pub', domain: 'example.com' } });
-      await prisma.campaign.create({ data: { id: 1, advertiser_id: 1, name: 'Camp' } });
-      await prisma.adGroup.create({ data: { id: 1, campaign_id: 1, name: 'Group' } });
-      await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Ad 1', target_url: 'http://example.com' } });
-      // Create ad 2 for duplicate test
-      await prisma.ad.create({ data: { id: 2, ad_group_id: 1, title: 'Ad 2', target_url: 'http://example2.com' } });
+      advertiser = await prisma.advertiser.create({ data: { name: 'Adv' } });
+      publisher = await prisma.publisher.create({ data: { name: 'Pub' } });
+      campaign = await prisma.campaign.create({ data: { advertiser_id: advertiser.id, name: 'Camp' } });
+      adGroup = await prisma.adGroup.create({ data: { campaign_id: campaign.id, name: 'Group' } });
+      ad1 = await prisma.ad.create({ data: { ad_group_id: adGroup.id, title: 'Ad 1', target_url: 'http://example.com' } });
+      ad2 = await prisma.ad.create({ data: { ad_group_id: adGroup.id, title: 'Ad 2', target_url: 'http://example2.com' } });
     });
 
     describe('isDuplicate', () => {
@@ -41,8 +47,8 @@ describe('IVT Service (Invalid Traffic Detection)', () => {
         // Insert an initial valid click
         await prisma.click.create({
           data: {
-            ad_id: 1,
-            publisher_id: 1,
+            ad_id: ad1.id,
+            publisher_id: publisher.id,
             ip_address: '192.168.1.1',
             is_valid: 1,
             created_at: new Date('2026-03-12T10:00:00Z')
@@ -50,30 +56,30 @@ describe('IVT Service (Invalid Traffic Detection)', () => {
         });
 
         // Check a new click occurring 5 seconds later
-        const isDup = await isDuplicate(prisma, 1, '192.168.1.1', 999, new Date('2026-03-12T10:00:05Z'));
+        const isDup = await isDuplicate(prisma, ad1.id, '192.168.1.1', 9999, new Date('2026-03-12T10:00:05Z'));
         expect(isDup).toBe(true);
       });
 
       it('should not detect duplicate if more than 10 seconds have passed', async () => {
         await prisma.click.create({
           data: {
-            ad_id: 1,
-            publisher_id: 1,
+            ad_id: ad1.id,
+            publisher_id: publisher.id,
             ip_address: '192.168.1.1',
             is_valid: 1,
             created_at: new Date('2026-03-12T10:00:00Z')
           }
         });
 
-        const isDup = await isDuplicate(prisma, 1, '192.168.1.1', 999, new Date('2026-03-12T10:00:11Z'));
+        const isDup = await isDuplicate(prisma, ad1.id, '192.168.1.1', 9999, new Date('2026-03-12T10:00:11Z'));
         expect(isDup).toBe(false);
       });
 
       it('should not detect duplicate for different ad', async () => {
         await prisma.click.create({
           data: {
-            ad_id: 1,
-            publisher_id: 1,
+            ad_id: ad1.id,
+            publisher_id: publisher.id,
             ip_address: '192.168.1.1',
             is_valid: 1,
             created_at: new Date('2026-03-12T10:00:00Z')
@@ -81,7 +87,7 @@ describe('IVT Service (Invalid Traffic Detection)', () => {
         });
 
         // Check for ad_id 2
-        const isDup = await isDuplicate(prisma, 2, '192.168.1.1', 999, new Date('2026-03-12T10:00:05Z'));
+        const isDup = await isDuplicate(prisma, ad2.id, '192.168.1.1', 9999, new Date('2026-03-12T10:00:05Z'));
         expect(isDup).toBe(false);
       });
     });
@@ -91,8 +97,8 @@ describe('IVT Service (Invalid Traffic Detection)', () => {
         for (let i = 0; i < 50; i++) {
           await prisma.click.create({
             data: {
-              ad_id: 1,
-              publisher_id: 1,
+              ad_id: ad1.id,
+              publisher_id: publisher.id,
               ip_address: '10.0.0.1',
               is_valid: 1,
               created_at: new Date('2026-03-12T10:30:00Z')
@@ -100,7 +106,7 @@ describe('IVT Service (Invalid Traffic Detection)', () => {
           });
         }
 
-        const isLimited = await isRateLimited(prisma, '10.0.0.1', 999, new Date('2026-03-12T10:59:59Z'));
+        const isLimited = await isRateLimited(prisma, '10.0.0.1', 9999, new Date('2026-03-12T10:59:59Z'));
         expect(isLimited).toBe(true);
       });
 
@@ -108,8 +114,8 @@ describe('IVT Service (Invalid Traffic Detection)', () => {
         for (let i = 0; i < 49; i++) {
           await prisma.click.create({
             data: {
-              ad_id: 1,
-              publisher_id: 1,
+              ad_id: ad1.id,
+              publisher_id: publisher.id,
               ip_address: '10.0.0.1',
               is_valid: 1,
               created_at: new Date('2026-03-12T10:30:00Z')
@@ -117,7 +123,7 @@ describe('IVT Service (Invalid Traffic Detection)', () => {
           });
         }
 
-        const isLimited = await isRateLimited(prisma, '10.0.0.1', 999, new Date('2026-03-12T10:59:59Z'));
+        const isLimited = await isRateLimited(prisma, '10.0.0.1', 9999, new Date('2026-03-12T10:59:59Z'));
         expect(isLimited).toBe(false);
       });
       
@@ -125,8 +131,8 @@ describe('IVT Service (Invalid Traffic Detection)', () => {
         for (let i = 0; i < 50; i++) {
           await prisma.click.create({
             data: {
-              ad_id: 1,
-              publisher_id: 1,
+              ad_id: ad1.id,
+              publisher_id: publisher.id,
               ip_address: '10.0.0.1',
               is_valid: 1,
               created_at: new Date('2026-03-11T10:00:00Z')
@@ -134,8 +140,58 @@ describe('IVT Service (Invalid Traffic Detection)', () => {
           });
         }
 
-        const isLimited = await isRateLimited(prisma, '10.0.0.1', 999, new Date('2026-03-12T10:00:00Z'));
+        const isLimited = await isRateLimited(prisma, '10.0.0.1', 9999, new Date('2026-03-12T10:00:00Z'));
         expect(isLimited).toBe(false);
+      });
+    });
+
+    describe('isTooFastClick', () => {
+      beforeEach(async () => {
+        // Setup impression
+        await prisma.impression.create({
+          data: {
+            ad_id: ad1.id,
+            publisher_id: publisher.id,
+            imp_id: 'imp_123',
+            created_at: new Date('2026-03-12T10:00:00.000Z')
+          }
+        });
+      });
+
+      it('should flag click as too fast if it occurs within 1 second (e.g., 500ms)', async () => {
+        const click = {
+          imp_id: 'imp_123',
+          created_at: new Date('2026-03-12T10:00:00.500Z')
+        };
+        const isFast = await isTooFastClick(prisma, click);
+        expect(isFast).toBe(true);
+      });
+
+      it('should NOT flag click as too fast if it occurs after 1 second (e.g., 1500ms)', async () => {
+        const click = {
+          imp_id: 'imp_123',
+          created_at: new Date('2026-03-12T10:00:01.500Z')
+        };
+        const isFast = await isTooFastClick(prisma, click);
+        expect(isFast).toBe(false);
+      });
+
+      it('should flag as invalid if impression ID is missing in click', async () => {
+        const click = {
+          imp_id: null,
+          created_at: new Date('2026-03-12T10:00:01.500Z')
+        };
+        const isFast = await isTooFastClick(prisma, click);
+        expect(isFast).toBe(true);
+      });
+
+      it('should flag as invalid if linked impression is not found', async () => {
+        const click = {
+          imp_id: 'non_existent_imp',
+          created_at: new Date('2026-03-12T10:00:01.500Z')
+        };
+        const isFast = await isTooFastClick(prisma, click);
+        expect(isFast).toBe(true);
       });
     });
   });

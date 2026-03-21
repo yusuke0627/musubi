@@ -5,6 +5,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const adIdParam = searchParams.get("ad_id");
   const adUnitIdParam = searchParams.get("ad_unit_id");
+  const impId = searchParams.get("imp_id"); // Get imp_id
   
   if (!adIdParam || !adUnitIdParam) {
     return new NextResponse("ad_id and ad_unit_id are required", { status: 400 });
@@ -34,6 +35,7 @@ export async function GET(req: NextRequest) {
       await prisma.click.create({
         data: {
           click_id: clickId,
+          imp_id: impId, // Save imp_id
           ad_id: adId,
           publisher_id: adUnit.app.publisher_id,
           ad_unit_id: adUnitId,
