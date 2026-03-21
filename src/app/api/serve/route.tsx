@@ -127,6 +127,9 @@ export async function GET(req: NextRequest) {
     return new NextResponse(null, { status: 204 });
   }
 
+  // Impression ID の発行 (不正クリック判定用)
+  const impId = crypto.randomUUID();
+
   // Reactコンポーネントを使用して安全なHTMLを生成 (自動エスケープによるXSS対策)
   const { renderToStaticMarkup } = await import('react-dom/server');
   const AdCreative = (await import('@/components/AdCreative')).default;
@@ -135,12 +138,14 @@ export async function GET(req: NextRequest) {
   const clickUrlObj = new URL(`${new URL(req.url).origin}/api/click`);
   clickUrlObj.searchParams.set("ad_id", ad.id.toString());
   clickUrlObj.searchParams.set("ad_unit_id", adUnitId.toString());
+  clickUrlObj.searchParams.set("imp_id", impId); // Add imp_id
   const clickUrl = clickUrlObj.toString();
 
   // Tracking Pixel URL
   const pixelUrlObj = new URL(`${new URL(req.url).origin}/api/impression`);
   pixelUrlObj.searchParams.set("ad_id", ad.id.toString());
   pixelUrlObj.searchParams.set("ad_unit_id", adUnitId.toString());
+  pixelUrlObj.searchParams.set("imp_id", impId); // Add imp_id
   const pixelUrl = pixelUrlObj.toString();
 
   const adHtml = renderToStaticMarkup(

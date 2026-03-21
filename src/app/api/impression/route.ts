@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const adId = searchParams.get("ad_id");
   const adUnitId = searchParams.get("ad_unit_id");
+  const impId = searchParams.get("imp_id"); // Get imp_id
 
   if (!adId || !adUnitId) {
     return new NextResponse("Missing parameters", { status: 400 });
@@ -33,6 +34,7 @@ export async function GET(req: NextRequest) {
           ad_id: parseInt(adId, 10),
           publisher_id: adUnit.app.publisher_id,
           ad_unit_id: adUnit.id,
+          imp_id: impId, // Save imp_id
           user_agent: ua,
           ip_address: ip,
         }

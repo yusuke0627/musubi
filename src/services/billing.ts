@@ -1,5 +1,5 @@
 import prisma from '../lib/db';
-import { isBotUserAgent, isRateLimited, isDuplicate } from './ivt';
+import { isBotUserAgent, isRateLimited, isDuplicate, isTooFastClick } from './ivt';
 
 export async function runBillingWorker() {
   try {
@@ -37,6 +37,15 @@ export async function runBillingWorker() {
           await tx.click.update({
             where: { id: click.id },
             data: { is_valid: 0, processed: 1, invalid_reason: 'Duplicate click (10s)' }
+          });
+          return;
+        }
+
+        // 4. Too Fast Click Check (Impression to Click time)
+        if (await isTooFastClick(prisma, click)) {
+          await tx.click.update({
+            where: { id: click.id },
+            data: { is_valid: 0, processed: 1, invalid_reason: 'Too fast click' }
           });
           return;
         }
