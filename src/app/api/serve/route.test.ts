@@ -203,4 +203,34 @@ describe('GET /api/serve', () => {
       expect(resAndroid.status).toBe(200);
     });
   });
+
+  describe('Scoring & Smoothing', () => {
+    it('should serve a new ad (0 imps, 0 clicks) using smoothing score', async () => {
+      // Clear impressions and clicks to ensure 0/0
+      await prisma.impression.deleteMany();
+      await prisma.click.deleteMany();
+
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1');
+      const res = await GET(req);
+      
+      // Should be served because score = 100 * (0+1)/(0+100) = 1.0
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).toContain('Ad 1');
+    });
+
+    it('should serve the ad with higher smoothed score', async () => {
+      // Add a second ad group and ad with higher bid
+      await prisma.adGroup.create({ data: { id: 2, campaign_id: 1, name: 'Group 2', max_bid: 200, target_device: 'all', is_all_publishers: 1 } });
+      await prisma.ad.create({ data: { id: 2, ad_group_id: 2, title: 'Ad 2', target_url: 'http://target2.com', status: 'approved' } });
+
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1');
+      const res = await GET(req);
+      const html = await res.text();
+      
+      // Ad 2 should win (Bid 200 > Bid 100 with same 0/0 stats)
+      expect(html).toContain('Ad 2');
+      expect(html).not.toContain('Ad 1');
+    });
+  });
 });
