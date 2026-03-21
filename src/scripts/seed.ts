@@ -39,7 +39,7 @@ async function seed() {
 
   // 2. Advertisers
   const advertisers = [
-    { id: 1, name: 'Healthy Corp (Normal)', balance: 500000 },
+    { id: 1, name: 'Healthy Corp (Normal)', balance: 10000000 }, // 残高1000万！大富豪！💰
     { id: 2, name: 'Struggling Shop (Warning)', balance: 3500 },
     { id: 3, name: 'Broke Startup (Error)', balance: 450 },
   ];
@@ -165,6 +165,57 @@ async function seed() {
   await prisma.conversion.create({
     data: { click_id: clickId1, rule_id: rule1.id, revenue: 5000, created_at: now }
   });
+
+  console.log('📱 Seeding for OS Targeting Test Data...');
+
+  // 13. OS Targeting Test Publisher & Ad Unit
+  const osTestPub = await prisma.publisher.create({
+    data: { id: 10, name: 'OS Test Publisher', category: 'tech', balance: 0 }
+  });
+  const osTestApp = await prisma.app.create({
+    data: { id: 10, publisher_id: osTestPub.id, name: 'OS Test App', domain: 'ostest.com', platform: 'web' }
+  });
+  const osTestUnit = await prisma.adUnit.create({
+    data: { id: 100, app_id: osTestApp.id, name: 'OS Targeting Preview Unit', width: 300, height: 250 }
+  });
+
+  // 14. OS Targeting Test Campaign
+  const osCampaign = await prisma.campaign.create({
+    data: { id: 100, advertiser_id: 1, name: 'OS Targeting Test', budget: 1000000, daily_budget: 0 }
+  });
+
+  // 15. OS Targeting Ad Groups & Ads
+  const osTargets = [
+    { name: 'iOS Only', os: ['iOS'], img: '/images/ios.jpeg', id: 101 },
+    { name: 'Android Only', os: ['Android'], img: '/images/android.jpg', id: 102 },
+    { name: 'macOS Only', os: ['macOS'], img: '/images/mac.jpeg', id: 103 },
+    { name: 'Other Only', os: ['Other'], img: '/images/other.png', id: 104 },
+  ];
+
+  for (const target of osTargets) {
+    const group = await prisma.adGroup.create({
+      data: {
+        id: target.id,
+        campaign_id: osCampaign.id,
+        name: target.name,
+        max_bid: 10000, // 1万に設定！これでもスコア100だから最強だよっ！💰🔥
+        targeting: JSON.stringify({ os: target.os }),
+        is_all_publishers: 1
+      }
+    });
+
+    await prisma.ad.create({
+      data: {
+        id: target.id,
+        ad_group_id: group.id,
+        title: `${target.name} Ad`,
+        description: `This ad should only appear on ${target.os.join(', ')} devices.`,
+        image_url: target.img,
+        target_url: 'https://example.com/os-test',
+        status: 'approved'
+      }
+    });
+  }
 
   console.log('✅ Seeding completed!');
 }

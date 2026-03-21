@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { parseUserAgentContext } from "@/lib/userAgent";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -27,18 +28,18 @@ export async function GET(req: NextRequest) {
   const publisherId = adUnit.app.publisher_id;
   const publisherCategory = adUnit.app.publisher.category;
   
-  // 簡易デバイス判定
-  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
-  const currentDevice = isMobile ? 'mobile' : 'desktop';
+  // デバイス・OS判定
+  const { os, device } = parseUserAgentContext(ua);
+  const currentDevice = device.toLowerCase();
+  console.log(`[AdServe] UA: ${ua.substring(0, 50)}... OS: ${os}, Device: ${device}`);
 
   // 現在の時刻、曜日、時間を取得
   const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
   const dayOfWeek = now.getDay();
   const hour = now.getHours();
 
-  // RTB版：期待収益（eCPM）に基づき、最も収益性が高い承認済み広告を1件取得
-  const ads = await prisma.$queryRaw<any[]>(Prisma.sql`
+  // RTB版：期待収益（eCPM）に基づき、条件に合う広告候補を全件取得
+  const candidateAds = await prisma.$queryRaw<any[]>(Prisma.sql`
     WITH ad_stats AS (
       SELECT 
         ads.id,
@@ -59,10 +60,11 @@ export async function GET(req: NextRequest) {
         )
         -- キャンペーン予算チェック (Total)
         AND (campaigns.budget = 0 OR campaigns.spent < campaigns.budget)
-        -- キャンペーン予算チェック (Daily) - 高速なカラム比較に変更
+        -- キャンペーン予算チェック (Daily)
         AND (campaigns.daily_budget = 0 OR campaigns.today_spent < campaigns.daily_budget)
+        -- デバイス判定
         AND (ad_groups.target_device = 'all' OR ad_groups.target_device = ${currentDevice})
-        -- 配信先チェック (is_all_publishers または 中間テーブルに存在するか)
+        -- 配信先チェック
         AND (
           ad_groups.is_all_publishers = 1
           OR EXISTS (
@@ -85,7 +87,7 @@ export async function GET(req: NextRequest) {
           )
         )
     )
-    SELECT ads.*, ad_groups.max_bid,
+    SELECT ads.*, ad_groups.max_bid, ad_groups.targeting,
       CASE 
         WHEN s.imps < 5 THEN ad_groups.max_bid * 0.01
         ELSE ad_groups.max_bid * (CAST(s.valid_clicks AS REAL) / s.imps)
@@ -93,11 +95,33 @@ export async function GET(req: NextRequest) {
     FROM ads
     JOIN ad_groups ON ads.ad_group_id = ad_groups.id
     JOIN ad_stats s ON ads.id = s.id
-    ORDER BY score DESC, ads.id DESC
-    LIMIT 1
   `);
 
-  const ad = ads[0];
+  // OSターゲティングのフィルタリング
+  const matchedAds = candidateAds.filter((ad) => {
+    if (!ad.targeting) return true;
+
+    try {
+      const targetingRules = JSON.parse(ad.targeting);
+      
+      // OSターゲティングの判定
+      if (targetingRules.os && Array.isArray(targetingRules.os) && targetingRules.os.length > 0) {
+        if (!targetingRules.os.includes(os)) {
+          return false; // OSが一致しなければ弾く
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse targeting JSON", e);
+      // パース失敗時は安全のために配信対象外にするか、あるいは全配信にするか... 
+      // ここでは、おかしなデータは配信しない方針にするね！
+      return false; 
+    }
+    
+    return true;
+  });
+
+  // スコア順に並べ替えてトップを選択
+  const ad = matchedAds.sort((a, b) => b.score - a.score)[0];
 
   if (!ad) {
     return new NextResponse(null, { status: 204 });

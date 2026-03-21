@@ -120,4 +120,87 @@ describe('GET /api/serve', () => {
       expect(res.status).toBe(204);
     });
   });
+
+  describe('OS Targeting', () => {
+    it('should serve an ad when targeting matches iOS', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ os: ['iOS'] }) } 
+      });
+
+      // Request from iOS
+      const reqiOS = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X)' }
+      });
+      const resiOS = await GET(reqiOS);
+      expect(resiOS.status).toBe(200);
+
+      // Request from Android
+      const reqAndroid = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'user-agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F)' }
+      });
+      const resAndroid = await GET(reqAndroid);
+      expect(resAndroid.status).toBe(204);
+    });
+
+    it('should serve an ad when targeting matches Android', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ os: ['Android'] }) } 
+      });
+
+      // Request from Android
+      const reqAndroid = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'user-agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F)' }
+      });
+      const resAndroid = await GET(reqAndroid);
+      expect(resAndroid.status).toBe(200);
+
+      // Request from iOS
+      const reqiOS = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X)' }
+      });
+      const resiOS = await GET(reqiOS);
+      expect(resiOS.status).toBe(204);
+    });
+
+    it('should serve an ad when targeting multiple OS (iOS and Android)', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ os: ['iOS', 'Android'] }) } 
+      });
+
+      // Request from iOS
+      const resiOS = await GET(new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X)' }
+      }));
+      expect(resiOS.status).toBe(200);
+
+      // Request from Android
+      const resAndroid = await GET(new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'user-agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F)' }
+      }));
+      expect(resAndroid.status).toBe(200);
+
+      // Request from Windows (Other)
+      const resWindows = await GET(new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+      }));
+      expect(resWindows.status).toBe(204);
+    });
+
+    it('should serve an ad to any OS when targeting is not set', async () => {
+      await prisma.adGroup.update({ where: { id: 1 }, data: { targeting: null } });
+
+      const resiOS = await GET(new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X)' }
+      }));
+      expect(resiOS.status).toBe(200);
+
+      const resAndroid = await GET(new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'user-agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F)' }
+      }));
+      expect(resAndroid.status).toBe(200);
+    });
+  });
 });

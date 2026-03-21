@@ -31,6 +31,7 @@ const AdGroupSchema = z.object({
   target_device: z.enum(["all", "desktop", "mobile"]),
   target_category: z.string().optional().nullable().transform(v => v === "" ? null : v),
   target_publishers: z.array(z.string()).optional().default([]),
+  target_os: z.array(z.string()).optional().default([]),
 });
 
 const AdSchema = z.object({
@@ -81,6 +82,7 @@ export async function createCampaign(formData: FormData) {
 export async function createAdGroup(formData: FormData) {
   const data = Object.fromEntries(formData.entries());
   data.target_publishers = formData.getAll("target_publishers") as any;
+  data.target_os = formData.getAll("target_os") as any;
   const parsed = AdGroupSchema.safeParse(data);
 
   if (!parsed.success) {
@@ -88,10 +90,11 @@ export async function createAdGroup(formData: FormData) {
     throw new Error("Invalid ad group data");
   }
 
-  const { advertiser_id, campaign_id, name, max_bid, target_device, target_category, target_publishers } = parsed.data;
+  const { advertiser_id, campaign_id, name, max_bid, target_device, target_category, target_publishers, target_os } = parsed.data;
   await checkAuth(advertiser_id);
 
   const isAll = target_publishers.includes('all') || target_publishers.length === 0;
+  const targetingJson = target_os.length > 0 ? JSON.stringify({ os: target_os }) : null;
 
   await prisma.$transaction(async (tx) => {
     const adGroup = await tx.adGroup.create({
@@ -101,6 +104,7 @@ export async function createAdGroup(formData: FormData) {
         max_bid,
         target_device,
         target_category,
+        targeting: targetingJson,
         is_all_publishers: isAll ? 1 : 0,
       }
     });
@@ -226,6 +230,7 @@ export async function updateAdGroup(formData: FormData) {
   if (isNaN(id)) throw new Error("Invalid ad group ID");
 
   data.target_publishers = formData.getAll("target_publishers") as any;
+  data.target_os = formData.getAll("target_os") as any;
   const parsed = AdGroupSchema.safeParse(data);
 
   if (!parsed.success) {
@@ -233,10 +238,11 @@ export async function updateAdGroup(formData: FormData) {
     throw new Error("Invalid ad group data");
   }
 
-  const { advertiser_id, campaign_id, name, max_bid, target_device, target_category, target_publishers } = parsed.data;
+  const { advertiser_id, campaign_id, name, max_bid, target_device, target_category, target_publishers, target_os } = parsed.data;
   await checkAuth(advertiser_id);
 
   const isAll = target_publishers.includes('all') || target_publishers.length === 0;
+  const targetingJson = target_os.length > 0 ? JSON.stringify({ os: target_os }) : null;
 
   await prisma.$transaction(async (tx) => {
     await tx.adGroup.update({
@@ -247,6 +253,7 @@ export async function updateAdGroup(formData: FormData) {
         max_bid,
         target_device,
         target_category,
+        targeting: targetingJson,
         is_all_publishers: isAll ? 1 : 0,
       }
     });

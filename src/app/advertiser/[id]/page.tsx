@@ -221,12 +221,12 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Start Date</label>
-                  <input type="date" name="start_date" className="w-full p-2 border border-gray-200 rounded-lg text-xs" defaultValue={new Date().toISOString().split('T')[0]} />
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Start Date</label>
+                  <input type="date" name="start_date" className="w-full p-2 border border-gray-200 rounded-lg text-xs text-slate-900" defaultValue={new Date().toISOString().split('T')[0]} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">End Date</label>
-                  <input type="date" name="end_date" className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">End Date</label>
+                  <input type="date" name="end_date" className="w-full p-2 border border-gray-200 rounded-lg text-xs text-slate-900" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -281,14 +281,25 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
                 </div>
               </div>
               <div>
-                <label className="block text-xs uppercase tracking-wider font-black text-gray-400 mb-2">Target Device</label>
+                <label className="block text-xs uppercase tracking-wider font-black text-slate-500 mb-2">Target Device</label>
                 <div className="flex gap-4">
                   {['all', 'desktop', 'mobile'].map(d => (
-                    <label key={d} className="inline-flex items-center text-sm font-medium cursor-pointer">
+                    <label key={d} className="inline-flex items-center text-sm font-medium text-slate-700 cursor-pointer">
                       <input type="radio" name="target_device" value={d} defaultChecked={d === 'all'} className="mr-1 accent-emerald-600" /> {d.toUpperCase()}
                     </label>
                   ))}
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider font-black text-slate-500 mb-2">Target OS (Optional)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['iOS', 'Android', 'Windows', 'macOS', 'Other'].map(os => (
+                    <label key={os} className="inline-flex items-center text-sm font-medium text-slate-700 cursor-pointer">
+                      <input type="checkbox" name="target_os" value={os} className="mr-2 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" /> {os}
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1 text-[10px] text-slate-500 italic">If none selected, all OS will be targeted.</p>
               </div>
               <button type="submit" className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-bold hover:bg-emerald-700 transition-colors shadow-md">
                 Create Ad Group
