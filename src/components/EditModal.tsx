@@ -93,7 +93,7 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data, c
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Target Device</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Target Device</label>
                 <div className="flex gap-4">
                   {['all', 'desktop', 'mobile'].map(d => (
                     <label key={d} className="inline-flex items-center text-sm font-medium text-slate-700">
@@ -101,6 +101,36 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data, c
                     </label>
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Target OS (Optional)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(() => {
+                    let selectedOs: string[] = [];
+                    try {
+                      if (data.targeting) {
+                        const parsed = typeof data.targeting === 'string' ? JSON.parse(data.targeting) : data.targeting;
+                        selectedOs = parsed.os || [];
+                      }
+                    } catch (e) {
+                      console.error("Failed to parse targeting", e);
+                    }
+
+                    return ['iOS', 'Android', 'Windows', 'macOS', 'Other'].map(os => (
+                      <label key={os} className="inline-flex items-center text-sm font-medium text-slate-700">
+                        <input 
+                          type="checkbox" 
+                          name="target_os" 
+                          value={os} 
+                          defaultChecked={selectedOs.includes(os)} 
+                          className="mr-2 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" 
+                        /> {os}
+                      </label>
+                    ));
+                  })()}
+                </div>
+                <p className="mt-1 text-[10px] text-slate-500 italic">If none selected, all OS will be targeted.</p>
               </div>
             </>
           )}

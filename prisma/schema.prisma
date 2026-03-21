@@ -125,6 +125,7 @@ model AdGroup {
   max_bid           Float                      @default(10)
   target_device     String                     @default("all")
   target_category   String?
+  targeting         String?                    // JSON: { "os": ["iOS", "Android"] }
   is_all_publishers Int                        @default(1) // 1: All, 0: Specific
   campaign          Campaign                   @relation(fields: [campaign_id], references: [id])
   schedules         AdSchedule[]
