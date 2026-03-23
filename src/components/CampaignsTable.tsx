@@ -10,7 +10,7 @@ interface Campaign {
   name: string;
   budget: number;
   daily_budget: number;
-  start_date: string | Date;
+  start_date: string | Date | null;
   end_date?: string | Date | null;
   conversions: number;
   revenue: number;
@@ -42,12 +42,17 @@ export default function CampaignsTable({ campaigns, advertiserId }: CampaignsTab
     }),
     columnHelper.accessor("start_date", {
       header: "Duration",
-      cell: (info) => (
-        <div className="text-xs text-gray-500 whitespace-nowrap">
-          <div className="font-bold">{new Date(info.getValue()).toLocaleDateString('ja-JP')}</div>
-          <div className="text-[10px]">to {info.row.original.end_date ? new Date(info.row.original.end_date).toLocaleDateString('ja-JP') : 'Endless'}</div>
-        </div>
-      ),
+      cell: (info) => {
+        const startDate = info.getValue();
+        return (
+          <div className="text-xs text-gray-500 whitespace-nowrap">
+            <div className="font-bold">
+              {startDate ? new Date(startDate).toLocaleDateString('ja-JP') : 'Not set'}
+            </div>
+            <div className="text-[10px]">to {info.row.original.end_date ? new Date(info.row.original.end_date).toLocaleDateString('ja-JP') : 'Endless'}</div>
+          </div>
+        );
+      },
     }),
     columnHelper.accessor("conversions", {
       header: "CV",

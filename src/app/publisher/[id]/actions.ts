@@ -30,13 +30,13 @@ const AdUnitSchema = z.object({
   height: z.coerce.number().int().positive().nullable().optional(),
 });
 
-export async function createApp(formData: FormData) {
+export async function createApp(formData: FormData): Promise<void> {
   const data = Object.fromEntries(formData.entries());
   const parsed = AppSchema.safeParse(data);
 
   if (!parsed.success) {
     console.error(parsed.error.issues);
-    return { success: false, error: "Invalid app data" };
+    throw new Error("Invalid app data");
   }
 
   const { publisher_id, name, domain, bundle_id, platform } = parsed.data;
@@ -44,7 +44,7 @@ export async function createApp(formData: FormData) {
   const user = session?.user as any;
 
   if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== publisher_id)) {
-    return { success: false, error: "Forbidden" };
+    throw new Error("Forbidden");
   }
 
   await prisma.app.create({
@@ -52,42 +52,40 @@ export async function createApp(formData: FormData) {
   });
 
   revalidatePath(`/publisher/${publisher_id}`);
-  return { success: true };
 }
 
-export async function deleteApp(formData: FormData) {
+export async function deleteApp(formData: FormData): Promise<void> {
   const appId = parseInt(formData.get("app_id") as string, 10);
   const publisherId = parseInt(formData.get("publisher_id") as string, 10);
   
   const session = await auth();
   const user = session?.user as any;
   if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== publisherId)) {
-    return { success: false, error: "Forbidden" };
+    throw new Error("Forbidden");
   }
 
   await prisma.app.delete({ where: { id: appId } });
   revalidatePath(`/publisher/${publisherId}`);
-  return { success: true };
 }
 
-export async function createAdUnit(formData: FormData) {
+export async function createAdUnit(formData: FormData): Promise<void> {
   const data = Object.fromEntries(formData.entries());
   const parsed = AdUnitSchema.safeParse(data);
 
   if (!parsed.success) {
     console.error(parsed.error.issues);
-    return { success: false, error: "Invalid ad unit data" };
+    throw new Error("Invalid ad unit data");
   }
 
   const { app_id, name, ad_type, width, height } = parsed.data;
   
   const app = await prisma.app.findUnique({ where: { id: app_id } });
-  if (!app) return { success: false, error: "App not found" };
+  if (!app) throw new Error("App not found");
 
   const session = await auth();
   const user = session?.user as any;
   if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== app.publisher_id)) {
-    return { success: false, error: "Forbidden" };
+    throw new Error("Forbidden");
   }
 
   await prisma.adUnit.create({
@@ -95,31 +93,29 @@ export async function createAdUnit(formData: FormData) {
   });
 
   revalidatePath(`/publisher/${app.publisher_id}`);
-  return { success: true };
 }
 
-export async function deleteAdUnit(formData: FormData) {
+export async function deleteAdUnit(formData: FormData): Promise<void> {
   const adUnitId = parseInt(formData.get("ad_unit_id") as string, 10);
   const publisherId = parseInt(formData.get("publisher_id") as string, 10);
 
   const session = await auth();
   const user = session?.user as any;
   if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== publisherId)) {
-    return { success: false, error: "Forbidden" };
+    throw new Error("Forbidden");
   }
 
   await prisma.adUnit.delete({ where: { id: adUnitId } });
   revalidatePath(`/publisher/${publisherId}`);
-  return { success: true };
 }
 
-export async function updatePublisherProfile(formData: FormData) {
+export async function updatePublisherProfile(formData: FormData): Promise<void> {
   const data = Object.fromEntries(formData.entries());
   const parsed = ProfileUpdateSchema.safeParse(data);
 
   if (!parsed.success) {
     console.error(parsed.error.issues);
-    return { success: false, error: "Invalid profile data" };
+    throw new Error("Invalid profile data");
   }
 
   const { publisher_id, category } = parsed.data;
@@ -128,7 +124,7 @@ export async function updatePublisherProfile(formData: FormData) {
 
   // Authorization check
   if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== publisher_id)) {
-    return { success: false, error: "Forbidden: Access denied" };
+    throw new Error("Forbidden: Access denied");
   }
 
   await prisma.publisher.update({
@@ -137,16 +133,15 @@ export async function updatePublisherProfile(formData: FormData) {
   });
 
   revalidatePath(`/publisher/${publisher_id}`);
-  return { success: true };
 }
 
-export async function requestPayout(formData: FormData) {
+export async function requestPayout(formData: FormData): Promise<void> {
   const data = Object.fromEntries(formData.entries());
   const parsed = PayoutRequestSchema.safeParse(data);
 
   if (!parsed.success) {
     console.error(parsed.error.issues);
-    return { success: false, error: "Invalid publisher ID" };
+    throw new Error("Invalid publisher ID");
   }
 
   const publisherId = parsed.data.publisher_id;
@@ -155,7 +150,7 @@ export async function requestPayout(formData: FormData) {
 
   // Authorization check
   if (user?.role !== 'admin' && (user?.role !== 'publisher' || user?.linked_id !== publisherId)) {
-    return { success: false, error: "Forbidden: Access denied" };
+    throw new Error("Forbidden: Access denied");
   }
 
   const publisher = await prisma.publisher.findUnique({
@@ -163,25 +158,28 @@ export async function requestPayout(formData: FormData) {
     select: { balance: true }
   });
 
-  if (publisher && publisher.balance >= 1000) {
-    const amount = publisher.balance;
-    await prisma.$transaction(async (tx) => {
-      await tx.payout.create({
-        data: {
-          publisher_id: publisherId,
-          amount: amount,
-          status: 'pending',
-        }
-      });
-      await tx.publisher.update({
-        where: { id: publisherId },
-        data: { balance: { decrement: amount } }
-      });
-    });
-    
-    revalidatePath(`/publisher/${publisherId}`);
-    return { success: true };
-  } else {
-    return { success: false, error: "Insufficient balance" };
+  if (!publisher) {
+    throw new Error("Publisher not found");
   }
+
+  if (publisher.balance < 1000) {
+    throw new Error("Insufficient balance");
+  }
+
+  const amount = publisher.balance;
+  await prisma.$transaction(async (tx) => {
+    await tx.payout.create({
+      data: {
+        publisher_id: publisherId,
+        amount: amount,
+        status: 'pending',
+      }
+    });
+    await tx.publisher.update({
+      where: { id: publisherId },
+      data: { balance: { decrement: amount } }
+    });
+  });
+  
+  revalidatePath(`/publisher/${publisherId}`);
 }

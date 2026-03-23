@@ -125,7 +125,7 @@ export async function getPlacementStats(advertiserId: string) {
     return {
       id: p.id,
       name: p.name,
-      domain: p.domain,
+      domain: null,
       impressions: p._count.impressions,
       clicks: p._count.clicks,
       cost: totalCost,

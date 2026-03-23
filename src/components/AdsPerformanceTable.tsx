@@ -23,7 +23,7 @@ interface AdPerformance {
   target_device: string;
   campaign_name: string;
   campaign_budget: number;
-  start_date: string | Date;
+  start_date: string | Date | null;
   end_date?: string | Date | null;
   target_url: string;
 }
