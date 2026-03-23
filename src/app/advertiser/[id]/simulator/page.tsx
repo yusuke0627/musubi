@@ -81,11 +81,11 @@ export default function AuctionSimulator({ params }: PageProps) {
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase mb-2">Target Ad Unit</label>
+                  <label className="block text-xs font-black text-slate-600 uppercase mb-2">Target Ad Unit</label>
                   <select 
                     value={selectedAdUnit}
                     onChange={(e) => setSelectedAdUnit(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
                   >
                     {adUnits.map(u => (
                       <option key={u.id} value={u.id}>{u.name} (ID: {u.id})</option>
@@ -94,14 +94,14 @@ export default function AuctionSimulator({ params }: PageProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase mb-2">User Agent Presets</label>
+                  <label className="block text-xs font-black text-slate-600 uppercase mb-2">User Agent Presets</label>
                   <div className="grid grid-cols-2 gap-2">
                     {presets.map(p => (
                       <button
                         key={p.name}
                         onClick={() => setUa(p.ua)}
                         className={`text-[10px] font-bold py-2 px-1 rounded-lg border transition-all ${
-                          ua === p.ua ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'
+                          ua === p.ua ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 shadow-sm'
                         }`}
                       >
                         {p.name}
@@ -111,11 +111,11 @@ export default function AuctionSimulator({ params }: PageProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase mb-2">Custom User Agent</label>
+                  <label className="block text-xs font-black text-slate-600 uppercase mb-2">Custom User Agent</label>
                   <textarea 
                     value={ua}
                     onChange={(e) => setUa(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-mono h-24 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-mono h-24 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
 
@@ -185,7 +185,8 @@ export default function AuctionSimulator({ params }: PageProps) {
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-100">
                         <th className="p-4 font-black text-slate-400 uppercase text-[10px]">Status</th>
-                        <th className="p-4 font-black text-slate-400 uppercase text-[10px]">Ad / Group</th>
+                        <th className="p-4 font-black text-slate-400 uppercase text-[10px]">Creative / Ad</th>
+                        <th className="p-4 font-black text-slate-400 uppercase text-[10px]">Group / Campaign</th>
                         <th className="p-4 font-black text-slate-400 uppercase text-[10px]">Score / Bid</th>
                         <th className="p-4 font-black text-slate-400 uppercase text-[10px]">Reason</th>
                       </tr>
@@ -202,8 +203,36 @@ export default function AuctionSimulator({ params }: PageProps) {
                             </span>
                           </td>
                           <td className="p-4">
-                            <div className="font-bold text-slate-900">{r.title}</div>
-                            <div className="text-[10px] text-slate-400 font-medium">{r.ad_group}</div>
+                            <div className="flex items-center gap-3">
+                              {r.image_url && (
+                                <div className="w-10 h-10 rounded border border-slate-200 overflow-hidden bg-slate-100 flex-shrink-0 shadow-sm">
+                                  <img src={r.image_url} alt="" className="w-full h-full object-cover" />
+                                </div>
+                              )}
+                              <div>
+                                <a 
+                                  href={`/advertiser/${advertiserId}#ad-${r.ad_id}`}
+                                  className="font-bold text-slate-900 hover:text-blue-600 hover:underline transition-colors block leading-tight"
+                                >
+                                  {r.title}
+                                </a>
+                                <div className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">ID: {r.ad_id}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <a 
+                              href={`/advertiser/${advertiserId}#ad-group-${r.ad_group_id}`}
+                              className="text-xs font-bold text-slate-700 hover:text-blue-600 hover:underline transition-colors block"
+                            >
+                              {r.ad_group}
+                            </a>
+                            <a 
+                              href={`/advertiser/${advertiserId}#campaign-${r.campaign_id}`}
+                              className="text-[10px] text-slate-400 font-bold hover:text-blue-600 hover:underline transition-colors block"
+                            >
+                              {r.campaign_name}
+                            </a>
                           </td>
                           <td className="p-4">
                             <div className="font-mono text-blue-600 font-bold">{r.score.toFixed(4)}</div>

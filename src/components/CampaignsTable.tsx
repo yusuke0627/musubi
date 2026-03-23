@@ -87,6 +87,7 @@ export default function CampaignsTable({ campaigns, advertiserId }: CampaignsTab
       <DataTable 
         columns={columns as ColumnDef<Campaign, any>[]} 
         data={campaigns} 
+        rowIdPrefix="campaign"
       />
     </section>
   );

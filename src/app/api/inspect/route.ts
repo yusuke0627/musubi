@@ -131,7 +131,11 @@ export async function GET(req: NextRequest) {
     return {
       ad_id: ad.id,
       title: ad.title,
+      image_url: ad.image_url,
       ad_group: group.name,
+      ad_group_id: group.id,
+      campaign_name: campaign.name,
+      campaign_id: campaign.id,
       status,
       reason,
       score,

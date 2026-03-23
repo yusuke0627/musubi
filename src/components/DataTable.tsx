@@ -15,12 +15,14 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   defaultVisibility?: VisibilityState;
+  rowIdPrefix?: string;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   defaultVisibility = {},
+  rowIdPrefix,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(defaultVisibility);
@@ -122,7 +124,11 @@ export function DataTable<TData, TValue>({
           <tbody className="bg-white divide-y divide-gray-200">
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50 transition-colors text-sm">
+                <tr 
+                  key={row.id} 
+                  id={rowIdPrefix ? `${rowIdPrefix}-${(row.original as any).id}` : undefined}
+                  className="hover:bg-gray-50 transition-colors text-sm scroll-mt-24"
+                >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-6 py-4 whitespace-nowrap">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

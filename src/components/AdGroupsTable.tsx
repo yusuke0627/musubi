@@ -83,6 +83,7 @@ export default function AdGroupsTable({ adGroups, campaigns, advertiserId }: AdG
       <DataTable 
         columns={columns as ColumnDef<AdGroup, any>[]} 
         data={adGroups} 
+        rowIdPrefix="ad-group"
       />
     </section>
   );

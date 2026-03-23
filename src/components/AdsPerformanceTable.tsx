@@ -184,6 +184,7 @@ export default function AdsPerformanceTable({ ads, adGroups, advertiserId }: Ads
       <DataTable 
         columns={columns as ColumnDef<AdPerformance, any>[]} 
         data={ads} 
+        rowIdPrefix="ad"
         defaultVisibility={{
           campaign_name: false,
           target_device: false,

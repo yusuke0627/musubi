@@ -167,6 +167,18 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes highlight {
+          0% { background-color: rgb(254 249 195); }
+          100% { background-color: transparent; }
+        }
+        tr:target {
+          animation: highlight 3s ease-out;
+          background-color: rgb(254 249 195 / 0.5) !important;
+          outline: 2px solid rgb(234 179 8);
+          outline-offset: -2px;
+        }
+      `}} />
       <div className="max-w-6xl mx-auto space-y-12">
         <header className="flex justify-between items-center border-b pb-6">
           <div>
