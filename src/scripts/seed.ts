@@ -111,10 +111,10 @@ async function seed() {
 
   // 7. Ads
   const ads = [
-    { id: 1, ad_group_id: 1, title: 'Approved Ad (Chiikawa)', status: 'approved', image_url: IMAGES[0], target_url: 'https://ex.com/1' },
-    { id: 2, ad_group_id: 1, title: 'Pending Ad (Review)', status: 'pending', image_url: IMAGES[1], target_url: 'https://ex.com/2' },
-    { id: 3, ad_group_id: 1, title: 'Rejected Ad (Violation)', status: 'rejected', rejection_reason: 'Copyright issue.', image_url: IMAGES[2], target_url: 'https://ex.com/3' },
-    { id: 4, ad_group_id: 6, title: 'Low CTR Ad', status: 'approved', image_url: IMAGES[6], target_url: 'https://ex.com/4' },
+    { id: 1, ad_group_id: 1, title: 'Approved Ad (Chiikawa)', review_status: 'approved', status: 'ACTIVE', image_url: IMAGES[0], target_url: 'https://ex.com/1' },
+    { id: 2, ad_group_id: 1, title: 'Pending Ad (Review)', review_status: 'pending', status: 'ACTIVE', image_url: IMAGES[1], target_url: 'https://ex.com/2' },
+    { id: 3, ad_group_id: 1, title: 'Rejected Ad (Violation)', review_status: 'rejected', status: 'ACTIVE', rejection_reason: 'Copyright issue.', image_url: IMAGES[2], target_url: 'https://ex.com/3' },
+    { id: 4, ad_group_id: 6, title: 'Low CTR Ad', review_status: 'approved', status: 'ACTIVE', image_url: IMAGES[6], target_url: 'https://ex.com/4' },
   ];
   for (const ad of ads) {
     await prisma.ad.create({ data: ad });
@@ -212,7 +212,8 @@ async function seed() {
         description: `This ad should only appear on ${target.os.join(', ')} devices.`,
         image_url: target.img,
         target_url: 'https://example.com/os-test',
-        status: 'approved'
+        review_status: 'approved',
+        status: 'ACTIVE'
       }
     });
   }

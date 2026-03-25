@@ -23,7 +23,7 @@ describe('Conversion Tracking API', () => {
         ad_group_id: 1, 
         title: 'Ad 1', 
         target_url: 'http://advertiser.com/landing', 
-        status: 'approved' 
+        review_status: 'approved', status: 'ACTIVE' 
       } 
     });
 

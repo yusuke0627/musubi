@@ -59,17 +59,17 @@ export default function AdsPerformanceTable({ ads, adGroups, advertiserId }: Ads
     columnHelper.accessor("status", {
       header: "Status",
       cell: (info) => {
-        const status = info.getValue();
+        const review_status = info.getValue();
         const ad = info.row.original;
         return (
           <div>
             <span className={`px-2 py-1 rounded text-[10px] font-black tracking-tighter ${
-              status === 'approved' ? 'bg-green-100 text-green-800' : 
-              status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+              review_status === 'approved' ? 'bg-green-100 text-green-800' : 
+              review_status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
             }`}>
-              {status.toUpperCase()}
+              {review_status.toUpperCase()}
             </span>
-            {status === 'rejected' && (
+            {review_status === 'rejected' && (
               <div className="text-[10px] text-red-500 mt-1 max-w-[150px] truncate font-medium italic" title={ad.rejection_reason || ''}>
                 {ad.rejection_reason}
               </div>

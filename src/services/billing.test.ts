@@ -27,7 +27,7 @@ describe('Billing Service', () => {
       data: { campaign_id: camp1.id, name: 'Group 1', max_bid: 100 }
     });
     ad1 = await prisma.ad.create({
-      data: { ad_group_id: group1.id, title: 'Ad 1', target_url: 'http://t.com', status: 'approved' }
+      data: { ad_group_id: group1.id, title: 'Ad 1', target_url: 'http://t.com', review_status: 'approved', status: 'ACTIVE' }
     });
   });
 
