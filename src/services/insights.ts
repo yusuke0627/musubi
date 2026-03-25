@@ -107,7 +107,7 @@ export async function getAdvertiserInsights(advertiserId: number): Promise<Insig
   const [rejectedAdsCount, campaigns, advertiser, ads] = await Promise.all([
     prisma.ad.count({
       where: {
-        status: 'rejected',
+        review_status: 'rejected',
         adGroup: { campaign: { advertiser_id: advertiserId } }
       }
     }),
