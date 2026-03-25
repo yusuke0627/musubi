@@ -110,13 +110,13 @@ export async function reviewAd(formData: FormData) {
 
   await checkAdmin();
   const { ad_id, action, rejection_reason } = parsed.data;
-  const status = action === 'approve' ? 'approved' : 'rejected';
+  const review_status = action === 'approve' ? 'approved' : 'rejected';
   
   await prisma.ad.update({
     where: { id: ad_id },
     data: { 
-      status, 
-      rejection_reason: status === 'rejected' ? rejection_reason : null 
+      review_status, 
+      rejection_reason: review_status === 'rejected' ? rejection_reason : null 
     }
   });
   

@@ -146,7 +146,8 @@ export async function createAd(formData: FormData) {
       description,
       image_url,
       target_url,
-      status: 'pending',
+      review_status: 'pending',
+      status: 'ACTIVE',
     }
   });
 
@@ -307,7 +308,7 @@ export async function updateAd(formData: FormData) {
     current.image_url !== image_url || 
     current.target_url !== target_url;
 
-  const newStatus = isCreativeChanged ? 'pending' : current.status;
+  const newStatus = isCreativeChanged ? 'pending' : current.review_status;
 
   await prisma.ad.update({
     where: { id },
@@ -317,7 +318,7 @@ export async function updateAd(formData: FormData) {
       description,
       image_url,
       target_url,
-      status: newStatus,
+      review_status: newStatus,
     }
   });
 

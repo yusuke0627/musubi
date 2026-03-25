@@ -15,7 +15,7 @@ describe('getDailyStats', () => {
 
     await prisma.campaign.create({ data: { id: 1, advertiser_id: 1, name: 'Test Camp' } });
     await prisma.adGroup.create({ data: { id: 1, campaign_id: 1, name: 'Test Group' } });
-    await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Test Ad', target_url: 'http://test.com', status: 'approved' } });
+    await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Test Ad', target_url: 'http://test.com', review_status: 'approved', status: 'ACTIVE' } });
   });
 
   it('should aggregate impressions and clicks by date', async () => {
@@ -56,7 +56,7 @@ describe('getPlacementStats', () => {
     
     await prisma.campaign.create({ data: { id: 1, advertiser_id: 1, name: 'Camp 1' } });
     await prisma.adGroup.create({ data: { id: 1, campaign_id: 1, name: 'Group 1' } });
-    await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Ad 1', target_url: 'http://a1.com', status: 'approved' } });
+    await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Ad 1', target_url: 'http://a1.com', review_status: 'approved', status: 'ACTIVE' } });
 
     await prisma.impression.create({ data: { ad_id: 1, publisher_id: 1, ad_unit_id: 1 } });
     await prisma.impression.create({ data: { ad_id: 1, publisher_id: 1, ad_unit_id: 1 } });

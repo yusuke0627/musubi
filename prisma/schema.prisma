@@ -5,6 +5,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// 配信制御用ステータス
+enum EntityStatus {
+  ACTIVE    // 配信中
+  PAUSED    // ユーザーによる一時停止
+  ARCHIVED  // 削除済み（論理削除）
+}
+
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
@@ -89,19 +96,20 @@ model Payout {
   @@map("payouts")
 }
 model Campaign {
-  id           Int        @id @default(autoincrement())
+  id            Int          @id @default(autoincrement())
   advertiser_id Int
-  name         String
-  budget       Float      @default(0) // Total budget
-  spent        Float      @default(0) // Total spent
-  daily_budget Float      @default(0) // Daily budget (0 = unlimited)
-  today_spent  Float      @default(0) // Spent today (reset daily)
-  start_date   DateTime?
-  end_date     DateTime?
-  created_at   DateTime   @default(now())
-  advertiser   Advertiser @relation(fields: [advertiser_id], references: [id])
-  adGroups     AdGroup[]
-  clicks       Click[]
+  name          String
+  budget        Float        @default(0) // Total budget
+  spent         Float        @default(0) // Total spent
+  daily_budget  Float        @default(0) // Daily budget (0 = unlimited)
+  today_spent   Float        @default(0) // Spent today (reset daily)
+  status        EntityStatus @default(ACTIVE) // 配信制御用ステータス
+  start_date    DateTime?
+  end_date      DateTime?
+  created_at    DateTime     @default(now())
+  advertiser    Advertiser   @relation(fields: [advertiser_id], references: [id])
+  adGroups      AdGroup[]
+  clicks        Click[]
 
   @@map("campaigns")
 }
@@ -127,6 +135,7 @@ model AdGroup {
   target_category   String?
   targeting         String?                    // JSON: { "os": ["iOS", "Android"] }
   is_all_publishers Int                        @default(1) // 1: All, 0: Specific
+  status            EntityStatus               @default(ACTIVE) // 配信制御用ステータス
   campaign          Campaign                   @relation(fields: [campaign_id], references: [id])
   schedules         AdSchedule[]
   targetPublishers  AdGroupTargetPublisher[]
@@ -152,8 +161,9 @@ model Ad {
   description      String?
   image_url        String?
   target_url       String
-  status           String       @default("pending")
+  review_status    String       @default("pending") // 審査ステータス（旧status）
   rejection_reason String?
+  status           EntityStatus @default(ACTIVE)     // 配信制御用ステータス
   adGroup          AdGroup      @relation(fields: [ad_group_id], references: [id])
   impressions      Impression[]
   clicks           Click[]

@@ -50,7 +50,10 @@ export async function GET(req: NextRequest) {
       JOIN ad_groups ON ads.ad_group_id = ad_groups.id
       JOIN campaigns ON ad_groups.campaign_id = campaigns.id
       JOIN advertisers ON campaigns.advertiser_id = advertisers.id
-      WHERE ads.status = 'approved'
+      WHERE ads.review_status = 'approved'
+        AND ads.status = 'ACTIVE'
+        AND ad_groups.status = 'ACTIVE'
+        AND campaigns.status = 'ACTIVE'
         AND advertisers.balance >= ad_groups.max_bid
         -- カテゴリマッチング
         AND (

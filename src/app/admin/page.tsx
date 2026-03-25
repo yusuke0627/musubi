@@ -90,7 +90,7 @@ export default async function AdminDashboard() {
 
   // 審査待ち広告
   const pendingAds = await prisma.ad.findMany({
-    where: { status: 'pending' },
+    where: { review_status: 'pending' },
     include: {
       adGroup: {
         include: {
@@ -375,10 +375,10 @@ export default async function AdminDashboard() {
                     <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{ad.adGroup.campaign.advertiser.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 rounded text-[10px] font-bold ${
-                        ad.status === 'approved' ? 'bg-green-100 text-green-800' : 
-                        ad.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                        ad.review_status === 'approved' ? 'bg-green-100 text-green-800' : 
+                        ad.review_status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {ad.status.toUpperCase()}
+                        {ad.review_status.toUpperCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 text-right font-mono">{ad._count.impressions.toLocaleString()}</td>

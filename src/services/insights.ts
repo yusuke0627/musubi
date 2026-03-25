@@ -13,7 +13,7 @@ export async function getAdminInsights(): Promise<Insight[]> {
 
   // Issue #1: Admin Task-based Insights
   const [pendingAds, pendingPayouts, unprocessedClicks] = await Promise.all([
-    prisma.ad.count({ where: { status: 'pending' } }),
+    prisma.ad.count({ where: { review_status: 'pending' } }),
     prisma.payout.count({ where: { status: 'pending' } }),
     prisma.click.count({ where: { processed: 0 } }),
   ]);
@@ -120,7 +120,7 @@ export async function getAdvertiserInsights(advertiserId: number): Promise<Insig
       select: { balance: true }
     }),
     prisma.ad.findMany({
-      where: { adGroup: { campaign: { advertiser_id: advertiserId } }, status: 'approved' },
+      where: { adGroup: { campaign: { advertiser_id: advertiserId } }, review_status: 'approved' },
       include: {
         _count: {
           select: {

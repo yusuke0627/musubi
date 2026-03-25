@@ -70,9 +70,9 @@ export async function GET(req: NextRequest) {
     let reason = "";
 
     // ステップ1: 広告ステータス
-    if (ad.status !== 'approved') {
+    if (ad.review_status !== 'approved') {
       status = "REJECTED";
-      reason = `AD_STATUS_${ad.status.toUpperCase()}`;
+      reason = `AD_STATUS_${ad.review_status.toUpperCase()}`;
     }
     // ステップ2: 広告主残高
     else if (advertiser.balance < group.max_bid) {

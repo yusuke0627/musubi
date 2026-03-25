@@ -16,7 +16,7 @@ describe('GET /api/serve', () => {
 
     await prisma.campaign.create({ data: { id: 1, advertiser_id: 1, name: 'Camp 1', budget: 1000, spent: 0 } });
     await prisma.adGroup.create({ data: { id: 1, campaign_id: 1, name: 'Group 1', max_bid: 100, target_device: 'all', is_all_publishers: 1 } });
-    await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Ad 1', description: 'Desc 1', image_url: 'http://img.com', target_url: 'http://target.com', status: 'approved' } });
+    await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Ad 1', description: 'Desc 1', image_url: 'http://img.com', target_url: 'http://target.com', review_status: 'approved', status: 'ACTIVE' } });
   });
 
   it('should return 400 if ad_unit_id is missing', async () => {
@@ -69,7 +69,7 @@ describe('GET /api/serve', () => {
   });
 
   it('should return 204 if no matching ad is found', async () => {
-    await prisma.ad.update({ where: { id: 1 }, data: { status: 'pending' } });
+    await prisma.ad.update({ where: { id: 1 }, data: { review_status: 'pending' } });
     const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1');
     const res = await GET(req);
     expect(res.status).toBe(204);
@@ -222,7 +222,7 @@ describe('GET /api/serve', () => {
     it('should serve the ad with higher smoothed score', async () => {
       // Add a second ad group and ad with higher bid
       await prisma.adGroup.create({ data: { id: 2, campaign_id: 1, name: 'Group 2', max_bid: 200, target_device: 'all', is_all_publishers: 1 } });
-      await prisma.ad.create({ data: { id: 2, ad_group_id: 2, title: 'Ad 2', target_url: 'http://target2.com', status: 'approved' } });
+      await prisma.ad.create({ data: { id: 2, ad_group_id: 2, title: 'Ad 2', target_url: 'http://target2.com', review_status: 'approved', status: 'ACTIVE' } });
 
       const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1');
       const res = await GET(req);
