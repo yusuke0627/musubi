@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { OptimizationAlert, AlertSeverity } from '@/types/alert';
 
 interface OptimizationAlertSectionProps {
@@ -32,6 +32,8 @@ const severityConfig: Record<AlertSeverity, { icon: string; bgColor: string; bor
   },
 };
 
+const STORAGE_KEY = 'optimizationAlertExpanded';
+
 export default function OptimizationAlertSection({
   advertiserId,
   initialAlerts,
@@ -39,8 +41,24 @@ export default function OptimizationAlertSection({
   const [activeAlerts, setActiveAlerts] = useState(initialAlerts.activeAlerts);
   const [dismissedAlerts, setDismissedAlerts] = useState(initialAlerts.dismissedAlerts);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [showDismissed, setShowDismissed] = useState(false);
   const [isLoading, setIsLoading] = useState<string | null>(null);
+
+  // マウント後にsessionStorageから開閉状態を復元（Hydration対策）
+  useEffect(() => {
+    setIsMounted(true);
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (saved === 'true') {
+      setIsExpanded(true);
+    }
+  }, []);
+
+  // 開閉状態をsessionStorageに保存
+  const handleExpandToggle = useCallback((expanded: boolean) => {
+    setIsExpanded(expanded);
+    sessionStorage.setItem(STORAGE_KEY, expanded.toString());
+  }, []);
 
   const handleDismiss = useCallback(async (alertId: string) => {
     setIsLoading(alertId);
@@ -170,7 +188,7 @@ export default function OptimizationAlertSection({
       {/* Header - Click to toggle */}
       {activeAlerts.length > 0 && (
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={() => handleExpandToggle(!isExpanded)}
           className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
         >
           <span className="text-xs font-bold text-gray-700">

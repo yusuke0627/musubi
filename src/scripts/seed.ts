@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, EntityStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -7,7 +7,7 @@ const IMAGES = [
   "https://www.bandai.co.jp/images/character/chiikawa/img_keyvisual.jpg?d=1760092510",
   "https://dvs-cover.kodansha.co.jp/0000349299/ET2o0YvqQ18MRJ35RyGW891gRaagQsvHWphUxkZk.jpg",
   "https://odm-shop.talkingheads.biz/cdn/shop/files/ODM___0926c___2048x2048_bb7644ab-436e-408f-adda-cecfdf09e2ac_2048x.jpg?v=1697105317",
-  "https://lens.usercontent.google.com/image?vsrid=CPCblf7whcSTLRACGAEiJDgyMGM2ODZiLTg2MWUtNDBlNC1hNjAyLTYyN2I1NjI5OThhZDIGIgJ0YSgWOMqu2umno5MD&gsessionid=oBIWsmx30obkZxll0BYXVuyRT29ueLiPv9m9BAfI2xU2FFX1zS6PGw",
+  "https://placehold.jp/300x250.png?text=Budget+Exceeded+Ad", // Google LensのURLを修正
   "https://odm-shop.talkingheads.biz/cdn/shop/files/ODM___0926b___2048x2048_6ec50c70-8f01-4253-a0f1-145563697347_2048x.jpg?v=1696576409",
   "https://stat.ameba.jp/user_images/20251106/20/bocchisora-0411/80/60/j/o0770108015710979759.jpg",
   "https://m.media-amazon.com/images/I/510KVuiKagL._AC_UF1000,1000_QL80_.jpg"
@@ -111,10 +111,12 @@ async function seed() {
 
   // 7. Ads
   const ads = [
-    { id: 1, ad_group_id: 1, title: 'Approved Ad (Chiikawa)', review_status: 'approved', status: 'ACTIVE', image_url: IMAGES[0], target_url: 'https://ex.com/1' },
-    { id: 2, ad_group_id: 1, title: 'Pending Ad (Review)', review_status: 'pending', status: 'ACTIVE', image_url: IMAGES[1], target_url: 'https://ex.com/2' },
-    { id: 3, ad_group_id: 1, title: 'Rejected Ad (Violation)', review_status: 'rejected', status: 'ACTIVE', rejection_reason: 'Copyright issue.', image_url: IMAGES[2], target_url: 'https://ex.com/3' },
-    { id: 4, ad_group_id: 6, title: 'Low CTR Ad', review_status: 'approved', status: 'ACTIVE', image_url: IMAGES[6], target_url: 'https://ex.com/4' },
+    { id: 1, ad_group_id: 1, title: 'Approved Ad (Chiikawa)', review_status: 'approved', status: EntityStatus.ACTIVE, image_url: IMAGES[0], target_url: 'https://ex.com/1' },
+    { id: 2, ad_group_id: 1, title: 'Pending Ad (Review)', review_status: 'pending', status: EntityStatus.ACTIVE, image_url: IMAGES[1], target_url: 'https://ex.com/2' },
+    { id: 3, ad_group_id: 1, title: 'Rejected Ad (Violation)', review_status: 'rejected', status: EntityStatus.ACTIVE, rejection_reason: 'Copyright issue.', image_url: IMAGES[2], target_url: 'https://ex.com/3' },
+    { id: 4, ad_group_id: 6, title: 'Low CTR Ad', review_status: 'approved', status: EntityStatus.ACTIVE, image_url: IMAGES[6], target_url: 'https://ex.com/4' },
+    // Campaign 3 (Budget Exceeded) 用の広告 - 予算使い切れアラートをテストするため
+    { id: 5, ad_group_id: 3, title: 'Budget Exceeded Ad', review_status: 'approved', status: EntityStatus.ACTIVE, image_url: IMAGES[3], target_url: 'https://ex.com/5' },
   ];
   for (const ad of ads) {
     await prisma.ad.create({ data: ad });
@@ -224,7 +226,7 @@ async function seed() {
   // 1️⃣ NO_ADS_IN_CAMPAIGN: ACTIVEなキャンペーンだが広告なし
   const noAdsCampaign = await prisma.campaign.create({
     data: { 
-      id: 101, 
+      id: 110, 
       advertiser_id: 1, 
       name: '🔴 No Ads Campaign', 
       budget: 50000, 
@@ -236,7 +238,7 @@ async function seed() {
   // 広告グループはあるが、広告は作成しない
   await prisma.adGroup.create({
     data: {
-      id: 101,
+      id: 110,
       campaign_id: noAdsCampaign.id,
       name: 'Empty AdGroup (No Ads)',
       max_bid: 100,
@@ -247,7 +249,7 @@ async function seed() {
   // 2️⃣ PARENT_PAUSED: ACTIVEなキャンペーンだがAdGroupがPAUSED
   const parentPausedCampaign = await prisma.campaign.create({
     data: { 
-      id: 102, 
+      id: 111, 
       advertiser_id: 1, 
       name: '🔴 Parent Active but Group Paused', 
       budget: 50000, 
@@ -258,7 +260,7 @@ async function seed() {
   });
   const pausedAdGroup = await prisma.adGroup.create({
     data: {
-      id: 102,
+      id: 111,
       campaign_id: parentPausedCampaign.id,
       name: 'Paused AdGroup',
       max_bid: 100,
@@ -268,7 +270,7 @@ async function seed() {
   // 広告は作成するが、AdGroupがPAUSEDなので配信されない
   await prisma.ad.create({
     data: {
-      id: 101,
+      id: 110,
       ad_group_id: pausedAdGroup.id,
       title: 'Ad in Paused Group',
       target_url: 'https://example.com/paused',
@@ -281,7 +283,7 @@ async function seed() {
   // 3️⃣ NO_BUDGET: 予算未設定（budget=0, daily_budget=0）
   const noBudgetCampaign = await prisma.campaign.create({
     data: { 
-      id: 103, 
+      id: 112, 
       advertiser_id: 1, 
       name: '🟡 No Budget Set', 
       budget: 0, // 予算未設定！
@@ -292,7 +294,7 @@ async function seed() {
   });
   const noBudgetAdGroup = await prisma.adGroup.create({
     data: {
-      id: 103,
+      id: 112,
       campaign_id: noBudgetCampaign.id,
       name: 'AdGroup with Budget Issue',
       max_bid: 100,
@@ -302,7 +304,7 @@ async function seed() {
   // 広告はあるのでNO_ADSアラートは出ない
   await prisma.ad.create({
     data: {
-      id: 102,
+      id: 111,
       ad_group_id: noBudgetAdGroup.id,
       title: 'Ad without Budget',
       target_url: 'https://example.com/nobudget',
@@ -315,7 +317,7 @@ async function seed() {
   // 4️⃣ BUDGET_EXHAUSTED: 予算使い切れ（spent >= budget）
   const exhaustedCampaign = await prisma.campaign.create({
     data: { 
-      id: 104, 
+      id: 113, 
       advertiser_id: 1, 
       name: '🟡 Budget Exhausted', 
       budget: 10000, // 予算1万円
@@ -326,7 +328,7 @@ async function seed() {
   });
   const exhaustedAdGroup = await prisma.adGroup.create({
     data: {
-      id: 104,
+      id: 113,
       campaign_id: exhaustedCampaign.id,
       name: 'AdGroup with Exhausted Budget',
       max_bid: 100,
@@ -335,7 +337,7 @@ async function seed() {
   });
   await prisma.ad.create({
     data: {
-      id: 103,
+      id: 112,
       ad_group_id: exhaustedAdGroup.id,
       title: 'Ad with No Budget Left',
       target_url: 'https://example.com/exhausted',

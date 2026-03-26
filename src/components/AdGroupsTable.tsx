@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createColumnHelper, ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "./DataTable";
 import EditModal from "./EditModal";
@@ -24,6 +24,18 @@ interface AdGroupsTableProps {
 
 export default function AdGroupsTable({ adGroups, campaigns, advertiserId }: AdGroupsTableProps) {
   const [editModal, setEditModal] = useState<{ isOpen: boolean; data: any }>({ isOpen: false, data: null });
+
+  // Handle auto-edit from alert links
+  useEffect(() => {
+    const editAdGroupId = sessionStorage.getItem('editAdGroupId');
+    if (editAdGroupId) {
+      const adGroup = adGroups.find(g => g.id === parseInt(editAdGroupId));
+      if (adGroup) {
+        setEditModal({ isOpen: true, data: adGroup });
+        sessionStorage.removeItem('editAdGroupId');
+      }
+    }
+  }, [adGroups]);
 
   const columnHelper = createColumnHelper<AdGroup>();
 

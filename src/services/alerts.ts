@@ -48,7 +48,7 @@ export async function generateOptimizationAlerts(advertiserId: number): Promise<
         action: {
           label: '広告を追加する',
           type: 'link',
-          href: `/advertiser/${advertiserId}?tab=ads`,
+          href: `/advertiser/${advertiserId}?highlight=create-ad&campaign_id=${campaign.id}`,
         },
         isDismissed: dismissedSet.has(alertId),
       });
@@ -66,7 +66,7 @@ export async function generateOptimizationAlerts(advertiserId: number): Promise<
           action: {
             label: '広告グループを確認',
             type: 'link',
-            href: `/advertiser/${advertiserId}?tab=adgroups`,
+            href: `/advertiser/${advertiserId}?highlight=adgroups&edit=adgroup-${adGroup.id}`,
           },
           isDismissed: dismissedSet.has(alertId),
         });
@@ -84,7 +84,7 @@ export async function generateOptimizationAlerts(advertiserId: number): Promise<
         action: {
           label: '予算を設定する',
           type: 'link',
-          href: `/advertiser/${advertiserId}?tab=campaigns`,
+          href: `/advertiser/${advertiserId}?highlight=campaigns&edit=campaign-${campaign.id}`,
         },
         isDismissed: dismissedSet.has(alertId),
       });
@@ -105,7 +105,7 @@ export async function generateOptimizationAlerts(advertiserId: number): Promise<
         action: {
           label: '予算を増やす',
           type: 'link',
-          href: `/advertiser/${advertiserId}?tab=campaigns`,
+          href: `/advertiser/${advertiserId}?highlight=campaigns&edit=campaign-${campaign.id}`,
         },
         isDismissed: dismissedSet.has(alertId),
       });
