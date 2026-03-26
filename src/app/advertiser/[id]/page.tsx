@@ -1,6 +1,7 @@
 import prisma from "@/lib/db";
 import { getDailyStats, getPlacementStats } from "@/services/stats";
 import { getAdvertiserInsights } from "@/services/insights";
+import { generateOptimizationAlerts } from "@/services/alerts";
 import Link from "next/link";
 import { notFound, forbidden } from "next/navigation";
 import StatsChart from "@/components/StatsChart";
@@ -9,6 +10,7 @@ import CampaignsTable from "@/components/CampaignsTable";
 import AdGroupsTable from "@/components/AdGroupsTable";
 import PlacementReportTable from "@/components/PlacementReportTable";
 import InsightSection from "@/components/InsightSection";
+import OptimizationAlertSection from "@/components/OptimizationAlertSection";
 import { createCampaign, createAdGroup, createAd, createConversionRule, deleteConversionRule } from "./actions";
 import { auth } from "@/auth";
 
@@ -43,6 +45,7 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
   if (!advertiser) return notFound();
 
   const advertiserInsights = await getAdvertiserInsights(id);
+  const optimizationAlerts = await generateOptimizationAlerts(id);
 
   // キャンペーン一覧の取得
   const campaignsRaw = await prisma.campaign.findMany({
@@ -200,6 +203,14 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
             <p className="text-[10px] text-gray-400 font-bold">CTR: {totalImps > 0 ? ((totalClicks / totalImps) * 100).toFixed(2) : 0}%</p>
           </div>
         </section>
+
+        {/* Optimization Alerts */}
+        {(optimizationAlerts.activeAlerts.length > 0 || optimizationAlerts.dismissedAlerts.length > 0) && (
+          <OptimizationAlertSection
+            advertiserId={id}
+            initialAlerts={optimizationAlerts}
+          />
+        )}
 
         {/* Insights Section */}
         <InsightSection insights={advertiserInsights} />

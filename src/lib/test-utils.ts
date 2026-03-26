@@ -1,6 +1,7 @@
 import prisma from './db';
 
 export async function clearDatabase() {
+  await prisma.dismissedAlert.deleteMany();
   await prisma.conversion.deleteMany();
   await prisma.conversionRule.deleteMany();
   await prisma.payout.deleteMany();
