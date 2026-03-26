@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createColumnHelper, ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "./DataTable";
 import EditModal from "./EditModal";
@@ -23,6 +23,18 @@ interface CampaignsTableProps {
 
 export default function CampaignsTable({ campaigns, advertiserId }: CampaignsTableProps) {
   const [editModal, setEditModal] = useState<{ isOpen: boolean; data: any }>({ isOpen: false, data: null });
+
+  // Handle auto-edit from alert links
+  useEffect(() => {
+    const editCampaignId = sessionStorage.getItem('editCampaignId');
+    if (editCampaignId) {
+      const campaign = campaigns.find(c => c.id === parseInt(editCampaignId));
+      if (campaign) {
+        setEditModal({ isOpen: true, data: campaign });
+        sessionStorage.removeItem('editCampaignId');
+      }
+    }
+  }, [campaigns]);
 
   const columnHelper = createColumnHelper<Campaign>();
 

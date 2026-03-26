@@ -11,6 +11,7 @@ import AdGroupsTable from "@/components/AdGroupsTable";
 import PlacementReportTable from "@/components/PlacementReportTable";
 import InsightSection from "@/components/InsightSection";
 import OptimizationAlertSection from "@/components/OptimizationAlertSection";
+import AlertActionHandler from "@/components/AlertActionHandler";
 import { createCampaign, createAdGroup, createAd, createConversionRule, deleteConversionRule } from "./actions";
 import { auth } from "@/auth";
 
@@ -205,6 +206,8 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
         </section>
 
         {/* Optimization Alerts */}
+        <AlertActionHandler campaigns={campaigns} adGroups={adGroups} />
+
         {(optimizationAlerts.activeAlerts.length > 0 || optimizationAlerts.dismissedAlerts.length > 0) && (
           <OptimizationAlertSection
             advertiserId={id}
@@ -328,7 +331,7 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
           </section>
 
           {/* Step 3: Ad */}
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <section id="create-ad-section" className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h2 className="text-lg font-bold mb-4 text-gray-800 flex items-center">
               <span className="bg-blue-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs mr-2 shadow-sm">3</span>
               New Ad
