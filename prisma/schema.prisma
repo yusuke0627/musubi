@@ -237,3 +237,15 @@ model Conversion {
 
   @@map("conversions")
 }
+
+// 最適化アラートのDismiss（無視）履歴
+model DismissedAlert {
+  id            Int      @id @default(autoincrement())
+  advertiser_id Int
+  alert_type    String   // 'NO_ADS_IN_CAMPAIGN', 'PARENT_PAUSED', 'NO_BUDGET', 'BUDGET_EXHAUSTED'
+  entity_id     String   // campaign_idやad_group_idを文字列で保存
+  created_at    DateTime @default(now())
+
+  @@unique([advertiser_id, alert_type, entity_id])
+  @@map("dismissed_alerts")
+}
