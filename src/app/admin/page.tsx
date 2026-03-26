@@ -226,7 +226,7 @@ export default async function AdminDashboard() {
                           <form action={reviewAd} className="flex gap-2 items-center flex-1 min-w-[200px]">
                             <input type="hidden" name="ad_id" value={ad.id} />
                             <input type="hidden" name="action" value="reject" />
-                            <input type="text" name="rejection_reason" placeholder="Reject reason..." required className="flex-1 border p-1 text-xs rounded" />
+                            <input type="text" name="rejection_reason" placeholder="Reject reason..." required className="flex-1 border p-1 text-xs rounded text-gray-900 placeholder-gray-400" />
                             <button type="submit" className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors">Reject</button>
                           </form>
                         </div>
