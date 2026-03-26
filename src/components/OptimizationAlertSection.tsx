@@ -38,6 +38,7 @@ export default function OptimizationAlertSection({
 }: OptimizationAlertSectionProps) {
   const [activeAlerts, setActiveAlerts] = useState(initialAlerts.activeAlerts);
   const [dismissedAlerts, setDismissedAlerts] = useState(initialAlerts.dismissedAlerts);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [showDismissed, setShowDismissed] = useState(false);
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
@@ -101,15 +102,15 @@ export default function OptimizationAlertSection({
     return (
       <div
         key={alert.id}
-        className={`${config.bgColor} ${config.borderColor} border rounded-xl p-4 mb-3 transition-all`}
+        className={`${config.bgColor} ${config.borderColor} border rounded-lg p-2.5 mb-2 transition-all`}
       >
-        <div className="flex items-start gap-3">
-          <div className={`${config.iconBg} w-8 h-8 rounded-full flex items-center justify-center text-lg flex-shrink-0`}>
+        <div className="flex items-start gap-2">
+          <div className={`${config.iconBg} w-5 h-5 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5`}>
             {config.icon}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <h4 className="font-bold text-gray-900 text-sm">
+              <h4 className="font-bold text-gray-900 text-xs">
                 {alert.title}
               </h4>
               {!isDismissed && (
@@ -129,14 +130,14 @@ export default function OptimizationAlertSection({
                 </button>
               )}
             </div>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
               {alert.description}
             </p>
-            <div className="flex items-center gap-3 mt-3">
+            <div className="flex items-center gap-2 mt-2">
               {alert.action.type === 'link' && alert.action.href && (
                 <a
                   href={alert.action.href}
-                  className="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                  className="inline-flex items-center px-2 py-1 bg-white border border-gray-300 rounded text-[11px] font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
                 >
                   {alert.action.label}
                 </a>
@@ -161,43 +162,77 @@ export default function OptimizationAlertSection({
     return null;
   }
 
+  // 最重要アラート（折りたたみ時に表示）
+  const topAlert = activeAlerts[0];
+
   return (
-    <section className="space-y-4">
-      {/* Active Alerts */}
+    <section className="border border-gray-200 rounded-lg overflow-hidden">
+      {/* Header - Click to toggle */}
       {activeAlerts.length > 0 && (
-        <div>
-          <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
-            最適化アラート ({activeAlerts.length}件)
-          </h3>
-          {activeAlerts.map(alert => renderAlert(alert, false))}
-        </div>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
+          <span className="text-xs font-bold text-gray-700">
+            💡 {activeAlerts.length}件の重要な最適化提案があります
+          </span>
+          <svg
+            className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
       )}
 
-      {/* Toggle Dismissed */}
-      {dismissedAlerts.length > 0 && (
-        <div>
-          <button
-            onClick={() => setShowDismissed(!showDismissed)}
-            className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 py-2"
-          >
-            <svg
-              className={`w-3 h-3 transition-transform ${showDismissed ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+      {/* Alert Content */}
+      <div className="p-2">
+        {/* Active Alerts */}
+        {activeAlerts.length > 0 && (
+          <>
+            {/* Collapsed: Show only top alert */}
+            {!isExpanded && topAlert && renderAlert(topAlert, false)}
+            
+            {/* Expanded: Show all alerts */}
+            {isExpanded && activeAlerts.map((alert, index) => (
+              <div key={alert.id} className={index > 0 ? 'border-t border-gray-100' : ''}>
+                {renderAlert(alert, false)}
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Dismissed Alerts (only shown when expanded) */}
+        {isExpanded && dismissedAlerts.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-gray-200">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDismissed(!showDismissed);
+              }}
+              className="text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-1 py-1"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-            非表示アラートを表示 ({dismissedAlerts.length}件)
-          </button>
-          
-          {showDismissed && (
-            <div className="mt-2 opacity-60">
-              {dismissedAlerts.map(alert => renderAlert(alert, true))}
-            </div>
-          )}
-        </div>
-      )}
+              <svg
+                className={`w-3 h-3 transition-transform ${showDismissed ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              非表示アラート ({dismissedAlerts.length}件)
+            </button>
+            
+            {showDismissed && (
+              <div className="mt-1 opacity-40">
+                {dismissedAlerts.map(alert => renderAlert(alert, true))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

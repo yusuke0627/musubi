@@ -218,7 +218,142 @@ async function seed() {
     });
   }
 
+  // 16. Alert Test Data - 4種類のアラートを確認できるデータ
+  console.log('🚨 Seeding alert test data...');
+  
+  // 1️⃣ NO_ADS_IN_CAMPAIGN: ACTIVEなキャンペーンだが広告なし
+  const noAdsCampaign = await prisma.campaign.create({
+    data: { 
+      id: 101, 
+      advertiser_id: 1, 
+      name: '🔴 No Ads Campaign', 
+      budget: 50000, 
+      spent: 0, 
+      daily_budget: 1000,
+      status: 'ACTIVE'
+    }
+  });
+  // 広告グループはあるが、広告は作成しない
+  await prisma.adGroup.create({
+    data: {
+      id: 101,
+      campaign_id: noAdsCampaign.id,
+      name: 'Empty AdGroup (No Ads)',
+      max_bid: 100,
+      status: 'ACTIVE'
+    }
+  });
+
+  // 2️⃣ PARENT_PAUSED: ACTIVEなキャンペーンだがAdGroupがPAUSED
+  const parentPausedCampaign = await prisma.campaign.create({
+    data: { 
+      id: 102, 
+      advertiser_id: 1, 
+      name: '🔴 Parent Active but Group Paused', 
+      budget: 50000, 
+      spent: 0, 
+      daily_budget: 1000,
+      status: 'ACTIVE'
+    }
+  });
+  const pausedAdGroup = await prisma.adGroup.create({
+    data: {
+      id: 102,
+      campaign_id: parentPausedCampaign.id,
+      name: 'Paused AdGroup',
+      max_bid: 100,
+      status: 'PAUSED' // これがPAUSED！
+    }
+  });
+  // 広告は作成するが、AdGroupがPAUSEDなので配信されない
+  await prisma.ad.create({
+    data: {
+      id: 101,
+      ad_group_id: pausedAdGroup.id,
+      title: 'Ad in Paused Group',
+      target_url: 'https://example.com/paused',
+      review_status: 'approved',
+      status: 'ACTIVE',
+      image_url: IMAGES[0]
+    }
+  });
+
+  // 3️⃣ NO_BUDGET: 予算未設定（budget=0, daily_budget=0）
+  const noBudgetCampaign = await prisma.campaign.create({
+    data: { 
+      id: 103, 
+      advertiser_id: 1, 
+      name: '🟡 No Budget Set', 
+      budget: 0, // 予算未設定！
+      spent: 0, 
+      daily_budget: 0, // 日次予算も未設定！
+      status: 'ACTIVE'
+    }
+  });
+  const noBudgetAdGroup = await prisma.adGroup.create({
+    data: {
+      id: 103,
+      campaign_id: noBudgetCampaign.id,
+      name: 'AdGroup with Budget Issue',
+      max_bid: 100,
+      status: 'ACTIVE'
+    }
+  });
+  // 広告はあるのでNO_ADSアラートは出ない
+  await prisma.ad.create({
+    data: {
+      id: 102,
+      ad_group_id: noBudgetAdGroup.id,
+      title: 'Ad without Budget',
+      target_url: 'https://example.com/nobudget',
+      review_status: 'approved',
+      status: 'ACTIVE',
+      image_url: IMAGES[1]
+    }
+  });
+
+  // 4️⃣ BUDGET_EXHAUSTED: 予算使い切れ（spent >= budget）
+  const exhaustedCampaign = await prisma.campaign.create({
+    data: { 
+      id: 104, 
+      advertiser_id: 1, 
+      name: '🟡 Budget Exhausted', 
+      budget: 10000, // 予算1万円
+      spent: 10000,  // 使い切った！
+      daily_budget: 1000,
+      status: 'ACTIVE'
+    }
+  });
+  const exhaustedAdGroup = await prisma.adGroup.create({
+    data: {
+      id: 104,
+      campaign_id: exhaustedCampaign.id,
+      name: 'AdGroup with Exhausted Budget',
+      max_bid: 100,
+      status: 'ACTIVE'
+    }
+  });
+  await prisma.ad.create({
+    data: {
+      id: 103,
+      ad_group_id: exhaustedAdGroup.id,
+      title: 'Ad with No Budget Left',
+      target_url: 'https://example.com/exhausted',
+      review_status: 'approved',
+      status: 'ACTIVE',
+      image_url: IMAGES[2]
+    }
+  });
+
   console.log('✅ Seeding completed!');
+  console.log('');
+  console.log('🎯 アラート確認用データ:');
+  console.log('  1. 🔴 NO_ADS_IN_CAMPAIGN: "🔴 No Ads Campaign"');
+  console.log('  2. 🔴 PARENT_PAUSED: "🔴 Parent Active but Group Paused"');
+  console.log('  3. 🟡 NO_BUDGET: "🟡 No Budget Set"');
+  console.log('  4. 🟡 BUDGET_EXHAUSTED: "🟡 Budget Exhausted"');
+  console.log('');
+  console.log('   → Advertiser Dashboard (ID: 1) で確認できます！');
 }
 
 seed()
