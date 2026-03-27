@@ -41,7 +41,7 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
         
         if (createAdSection) {
           const rect = createAdSection.getBoundingClientRect();
-          const scrollTop = window.scrollY + rect.top + 200; // 200px余裕を持たせて下にスクロール
+          const scrollTop = window.scrollY + rect.top + 100; // 100px余裕を持たせて下にスクロール
           window.scrollTo({ top: scrollTop, behavior: 'smooth' });
           createAdSection.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4');
           setTimeout(() => createAdSection.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4'), 3000);
@@ -55,7 +55,7 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
         
         if (adGroupsSection) {
           const rect = adGroupsSection.getBoundingClientRect();
-          const scrollTop = window.scrollY + rect.top + 200; // 200px余裕を持たせて下にスクロール
+          const scrollTop = window.scrollY + rect.top + 100; // 100px余裕を持たせて下にスクロール
           window.scrollTo({ top: scrollTop, behavior: 'smooth' });
           adGroupsSection.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4');
           setTimeout(() => adGroupsSection.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4'), 3000);
@@ -72,7 +72,7 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
         
         if (campaignsSection) {
           const rect = campaignsSection.getBoundingClientRect();
-          const scrollTop = window.scrollY + rect.top + 200; // 200px余裕を持たせて下にスクロール
+          const scrollTop = window.scrollY + rect.top + 100; // 100px余裕を持たせて下にスクロール
           window.scrollTo({ top: scrollTop, behavior: 'smooth' });
           campaignsSection.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4');
           setTimeout(() => campaignsSection.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4'), 3000);
