@@ -4,6 +4,51 @@ import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
+import { writeFile } from "fs/promises";
+import { mkdir } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
+
+// 画像アップロード処理
+export async function uploadImage(formData: FormData) {
+  const file = formData.get("image") as File;
+  const advertiserId = formData.get("advertiser_id") as string;
+  
+  if (!file || !advertiserId) {
+    throw new Error("Missing file or advertiser_id");
+  }
+  
+  await checkAuth(parseInt(advertiserId, 10));
+  
+  // ファイルタイプチェック
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Only image files are allowed");
+  }
+  
+  // ファイルサイズチェック (5MB以下)
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error("File size must be less than 5MB");
+  }
+  
+  // 保存先ディレクトリ作成
+  const uploadDir = join(process.cwd(), "public", "uploads", "ads", advertiserId);
+  if (!existsSync(uploadDir)) {
+    await mkdir(uploadDir, { recursive: true });
+  }
+  
+  // ファイル名生成（タイムスタンプ + オリジナル名）
+  const timestamp = Date.now();
+  const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+  const filename = `${timestamp}_${originalName}`;
+  const filepath = join(uploadDir, filename);
+  
+  // ファイル保存
+  const bytes = await file.arrayBuffer();
+  await writeFile(filepath, Buffer.from(bytes));
+  
+  // 公開パスを返す
+  return `/uploads/ads/${advertiserId}/${filename}`;
+}
 
 async function checkAuth(advertiserId: number) {
   const session = await auth();
@@ -129,14 +174,26 @@ export async function createAdGroup(formData: FormData) {
 // 広告作成
 export async function createAd(formData: FormData) {
   const data = Object.fromEntries(formData.entries());
-  const parsed = AdSchema.safeParse(data);
+  
+  // ファイルアップロード処理
+  const imageFile = formData.get("image") as File;
+  let image_path = data.image_path as string;
+  
+  if (imageFile && imageFile.size > 0) {
+    const uploadFormData = new FormData();
+    uploadFormData.append("image", imageFile);
+    uploadFormData.append("advertiser_id", data.advertiser_id as string);
+    image_path = await uploadImage(uploadFormData);
+  }
+  
+  const parsed = AdSchema.safeParse({ ...data, image_path });
 
   if (!parsed.success) {
     console.error(parsed.error.issues);
     throw new Error("Invalid ad data");
   }
 
-  const { advertiser_id, ad_group_id, title, description, image_path, target_url } = parsed.data;
+  const { advertiser_id, ad_group_id, title, description, target_url } = parsed.data;
   await checkAuth(advertiser_id);
 
   await prisma.ad.create({
@@ -286,14 +343,25 @@ export async function updateAd(formData: FormData) {
   const id = parseInt(data.id as string, 10);
   if (isNaN(id)) throw new Error("Invalid ad ID");
 
-  const parsed = AdSchema.safeParse(data);
+  // ファイルアップロード処理
+  const imageFile = formData.get("image") as File;
+  let image_path = data.image_path as string;
+  
+  if (imageFile && imageFile.size > 0) {
+    const uploadFormData = new FormData();
+    uploadFormData.append("image", imageFile);
+    uploadFormData.append("advertiser_id", data.advertiser_id as string);
+    image_path = await uploadImage(uploadFormData);
+  }
+
+  const parsed = AdSchema.safeParse({ ...data, image_path });
 
   if (!parsed.success) {
     console.error(parsed.error.issues);
     throw new Error("Invalid ad data");
   }
 
-  const { advertiser_id, ad_group_id, title, description, image_path, target_url } = parsed.data;
+  const { advertiser_id, ad_group_id, title, description, target_url } = parsed.data;
   await checkAuth(advertiser_id);
 
   const current = await prisma.ad.findUnique({

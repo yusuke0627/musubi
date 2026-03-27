@@ -156,8 +156,20 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data, c
                 <textarea name="description" defaultValue={data.description} className="w-full p-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-medium" rows={2} />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Image Path</label>
-                <input type="url" name="image_path" defaultValue={data.image_path} className="w-full p-2 border rounded-lg text-xs text-slate-900 font-medium" required />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Image</label>
+                {data.image_path && (
+                  <div className="mb-2">
+                    <img src={data.image_path} alt="Current" className="w-20 h-16 object-cover rounded border" />
+                    <p className="text-[10px] text-gray-500 mt-1">Current image</p>
+                  </div>
+                )}
+                <input 
+                  type="file" 
+                  name="image" 
+                  accept="image/*" 
+                  className="w-full p-2 border rounded-lg text-xs text-slate-900 font-medium" 
+                />
+                <p className="text-[10px] text-gray-500 mt-1">Select new image to replace (optional)</p>
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Target URL</label>
