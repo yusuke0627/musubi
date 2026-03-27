@@ -3,14 +3,15 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// ローカルに保存した画像パス（外部URLタイムアウト対策）
 const IMAGES = [
-  "https://www.bandai.co.jp/images/character/chiikawa/img_keyvisual.jpg?d=1760092510",
-  "https://dvs-cover.kodansha.co.jp/0000349299/ET2o0YvqQ18MRJ35RyGW891gRaagQsvHWphUxkZk.jpg",
-  "https://odm-shop.talkingheads.biz/cdn/shop/files/ODM___0926c___2048x2048_bb7644ab-436e-408f-adda-cecfdf09e2ac_2048x.jpg?v=1697105317",
-  "https://placehold.jp/300x250.png?text=Budget+Exceeded+Ad", // Google LensのURLを修正
-  "https://odm-shop.talkingheads.biz/cdn/shop/files/ODM___0926b___2048x2048_6ec50c70-8f01-4253-a0f1-145563697347_2048x.jpg?v=1696576409",
-  "https://stat.ameba.jp/user_images/20251106/20/bocchisora-0411/80/60/j/o0770108015710979759.jpg",
-  "https://m.media-amazon.com/images/I/510KVuiKagL._AC_UF1000,1000_QL80_.jpg"
+  "/uploads/ads/chiikawa.jpg",
+  "/uploads/ads/kodansha.jpg",
+  "/uploads/ads/odm1.jpg",
+  "/uploads/ads/budget.jpg",
+  "/uploads/ads/odm2.jpg",
+  "/uploads/ads/ameba.jpg",
+  "/uploads/ads/amazon.jpg"
 ];
 
 async function seed() {
