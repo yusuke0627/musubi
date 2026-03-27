@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 interface AlertActionHandlerProps {
   campaigns: { id: number; name: string }[];
@@ -8,18 +9,13 @@ interface AlertActionHandlerProps {
 }
 
 export default function AlertActionHandler({ campaigns, adGroups }: AlertActionHandlerProps) {
-  const hasRunRef = useRef(false);
+  const searchParams = useSearchParams();
+  const highlight = searchParams.get('highlight');
+  const campaignId = searchParams.get('campaign_id');
+  const edit = searchParams.get('edit');
 
   useEffect(() => {
-    // Strict Mode対策：2回実行されるのを防ぐ
-    if (hasRunRef.current) return;
-    hasRunRef.current = true;
-    
-    // URLパラメータを取得
-    const params = new URLSearchParams(window.location.search);
-    const highlight = params.get('highlight');
-    const campaignId = params.get('campaign_id');
-    const edit = params.get('edit');
+    // URLパラメータが変わるたびに実行される
 
     // パラメータがない場合は sessionStorage をクリアして終了
     if (!highlight && !edit) {
@@ -68,7 +64,7 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
 
       // 3. NO_BUDGET / BUDGET_EXHAUSTED: Scroll to campaigns table and trigger edit modal
       if (highlight === 'campaigns' && edit?.startsWith('campaign-')) {
-        const campaignId = parseInt(edit.replace('campaign-', ''));
+        const editCampaignId = parseInt(edit.replace('campaign-', ''));
         const campaignsSection = document.getElementById('campaigns-section');
         
         if (campaignsSection) {
@@ -78,10 +74,10 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
         }
 
         // Store the campaign to edit in sessionStorage for the table component to pick up
-        sessionStorage.setItem('editCampaignId', campaignId.toString());
+        sessionStorage.setItem('editCampaignId', editCampaignId.toString());
       }
     });
-  }, []);
+  }, [highlight, edit, campaignId]); // URLパラメータが変わるたびに再実行
 
   return null;
 }
