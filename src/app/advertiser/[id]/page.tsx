@@ -349,8 +349,15 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
                 <input type="text" name="title" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none" placeholder="Ad Title" required />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Image Path</label>
-                <input type="url" name="image_path" className="w-full p-2 border border-gray-200 rounded-lg text-xs" defaultValue="https://placehold.jp/300x250.png?text=New+Ad" required />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Image</label>
+                <input 
+                  type="file" 
+                  name="image" 
+                  accept="image/*" 
+                  className="w-full p-2 border border-gray-200 rounded-lg text-xs" 
+                  required 
+                />
+                <p className="text-[10px] text-gray-500 mt-1">Select an image file (max 5MB)</p>
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Target URL</label>
