@@ -21,8 +21,22 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
     const campaignId = params.get('campaign_id');
     const edit = params.get('edit');
 
-    // パラメータがない場合は何もしない
-    if (!highlight && !edit) return;
+    // パラメータがない場合は sessionStorage をクリアして終了
+    if (!highlight && !edit) {
+      sessionStorage.removeItem('editCampaignId');
+      sessionStorage.removeItem('editAdGroupId');
+      return;
+    }
+
+    // 異なるハイライトタイプの場合、既存のsessionStorageをクリア
+    if (highlight === 'create-ad') {
+      sessionStorage.removeItem('editCampaignId');
+      sessionStorage.removeItem('editAdGroupId');
+    } else if (highlight === 'adgroups') {
+      sessionStorage.removeItem('editCampaignId');
+    } else if (highlight === 'campaigns') {
+      sessionStorage.removeItem('editAdGroupId');
+    }
 
     // requestAnimationFrameでDOM準備完了後に実行
     requestAnimationFrame(() => {
