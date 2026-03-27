@@ -349,8 +349,8 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
                 <input type="text" name="title" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none" placeholder="Ad Title" required />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Image URL</label>
-                <input type="url" name="image_url" className="w-full p-2 border border-gray-200 rounded-lg text-xs" defaultValue="https://placehold.jp/300x250.png?text=New+Ad" required />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Image Path</label>
+                <input type="url" name="image_path" className="w-full p-2 border border-gray-200 rounded-lg text-xs" defaultValue="https://placehold.jp/300x250.png?text=New+Ad" required />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Target URL</label>

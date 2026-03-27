@@ -8,7 +8,7 @@ import EditModal from "./EditModal";
 interface AdPerformance {
   id: number;
   title: string;
-  image_url: string | null;
+  image_path: string | null;
   description: string | null;
   status: string;
   rejection_reason?: string | null;
@@ -50,7 +50,7 @@ export default function AdsPerformanceTable({ ads, adGroups, advertiserId }: Ads
         return (
           <div className="flex items-center min-w-[200px]">
             {/* 画像読み込みを防止するため、imgタグをコメントアウト */}
-            {/* <img src={ad.image_url ?? undefined} className="w-12 h-10 object-cover rounded border border-gray-100 mr-3 shadow-sm" alt="" /> */}
+            {/* <img src={ad.image_path ?? undefined} className="w-12 h-10 object-cover rounded border border-gray-100 mr-3 shadow-sm" alt="" /> */}
             <div className="w-12 h-10 bg-gray-200 rounded border border-gray-100 mr-3 flex items-center justify-center text-[10px] text-gray-500">
               IMG
             </div>

@@ -212,7 +212,7 @@ export default async function AdminDashboard() {
                 <div className="divide-y divide-gray-200">
                   {pendingAds.map((ad) => (
                     <div key={ad.id} className="p-6 flex flex-col sm:flex-row gap-6">
-                      <img src={ad.image_url || ''} className="w-32 h-24 object-cover rounded-lg border shadow-sm flex-shrink-0" alt="" />
+                      <img src={ad.image_path || ''} className="w-32 h-24 object-cover rounded-lg border shadow-sm flex-shrink-0" alt="" />
                       <div className="flex-1">
                         <div className="font-bold text-gray-900">{ad.title}</div>
                         <div className="text-sm text-gray-500 mb-2">{ad.description}</div>
@@ -369,7 +369,7 @@ export default async function AdminDashboard() {
                 {ads.map((ad) => (
                   <tr key={ad.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 flex items-center">
-                      <img src={ad.image_url || ''} className="w-10 h-10 object-cover rounded-md border mr-3" alt="" />
+                      <img src={ad.image_path || ''} className="w-10 h-10 object-cover rounded-md border mr-3" alt="" />
                       <div className="text-sm font-bold text-gray-900">{ad.title}</div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{ad.adGroup.campaign.advertiser.name}</td>

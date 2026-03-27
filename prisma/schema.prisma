@@ -159,7 +159,7 @@ model Ad {
   ad_group_id      Int
   title            String
   description      String?
-  image_url        String?
+  image_path       String?
   target_url       String
   review_status    String       @default("pending") // 審査ステータス（旧status）
   rejection_reason String?

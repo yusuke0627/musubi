@@ -111,12 +111,12 @@ async function seed() {
 
   // 7. Ads
   const ads = [
-    { id: 1, ad_group_id: 1, title: 'Approved Ad (Chiikawa)', review_status: 'approved', status: EntityStatus.ACTIVE, image_url: IMAGES[0], target_url: 'https://ex.com/1' },
-    { id: 2, ad_group_id: 1, title: 'Pending Ad (Review)', review_status: 'pending', status: EntityStatus.ACTIVE, image_url: IMAGES[1], target_url: 'https://ex.com/2' },
-    { id: 3, ad_group_id: 1, title: 'Rejected Ad (Violation)', review_status: 'rejected', status: EntityStatus.ACTIVE, rejection_reason: 'Copyright issue.', image_url: IMAGES[2], target_url: 'https://ex.com/3' },
-    { id: 4, ad_group_id: 6, title: 'Low CTR Ad', review_status: 'approved', status: EntityStatus.ACTIVE, image_url: IMAGES[6], target_url: 'https://ex.com/4' },
+    { id: 1, ad_group_id: 1, title: 'Approved Ad (Chiikawa)', review_status: 'approved', status: EntityStatus.ACTIVE, image_path: IMAGES[0], target_url: 'https://ex.com/1' },
+    { id: 2, ad_group_id: 1, title: 'Pending Ad (Review)', review_status: 'pending', status: EntityStatus.ACTIVE, image_path: IMAGES[1], target_url: 'https://ex.com/2' },
+    { id: 3, ad_group_id: 1, title: 'Rejected Ad (Violation)', review_status: 'rejected', status: EntityStatus.ACTIVE, rejection_reason: 'Copyright issue.', image_path: IMAGES[2], target_url: 'https://ex.com/3' },
+    { id: 4, ad_group_id: 6, title: 'Low CTR Ad', review_status: 'approved', status: EntityStatus.ACTIVE, image_path: IMAGES[6], target_url: 'https://ex.com/4' },
     // Campaign 3 (Budget Exceeded) 用の広告 - 予算使い切れアラートをテストするため
-    { id: 5, ad_group_id: 3, title: 'Budget Exceeded Ad', review_status: 'approved', status: EntityStatus.ACTIVE, image_url: IMAGES[3], target_url: 'https://ex.com/5' },
+    { id: 5, ad_group_id: 3, title: 'Budget Exceeded Ad', review_status: 'approved', status: EntityStatus.ACTIVE, image_path: IMAGES[3], target_url: 'https://ex.com/5' },
   ];
   for (const ad of ads) {
     await prisma.ad.create({ data: ad });
@@ -212,7 +212,7 @@ async function seed() {
         ad_group_id: group.id,
         title: `${target.name} Ad`,
         description: `This ad should only appear on ${target.os.join(', ')} devices.`,
-        image_url: target.img,
+        image_path: target.img,
         target_url: 'https://example.com/os-test',
         review_status: 'approved',
         status: 'ACTIVE'
@@ -276,7 +276,7 @@ async function seed() {
       target_url: 'https://example.com/paused',
       review_status: 'approved',
       status: 'ACTIVE',
-      image_url: IMAGES[0]
+      image_path: IMAGES[0]
     }
   });
 
@@ -310,7 +310,7 @@ async function seed() {
       target_url: 'https://example.com/nobudget',
       review_status: 'approved',
       status: 'ACTIVE',
-      image_url: IMAGES[1]
+      image_path: IMAGES[1]
     }
   });
 
@@ -343,7 +343,7 @@ async function seed() {
       target_url: 'https://example.com/exhausted',
       review_status: 'approved',
       status: 'ACTIVE',
-      image_url: IMAGES[2]
+      image_path: IMAGES[2]
     }
   });
 
