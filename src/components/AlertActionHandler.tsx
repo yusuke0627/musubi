@@ -31,7 +31,7 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
         const createAdSection = document.getElementById('create-ad-section');
         
         if (createAdSection) {
-          createAdSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          createAdSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
           createAdSection.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4');
           setTimeout(() => createAdSection.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4'), 3000);
         }
@@ -43,7 +43,7 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
         const adGroupsSection = document.getElementById('adgroups-section');
         
         if (adGroupsSection) {
-          adGroupsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          adGroupsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
           adGroupsSection.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4');
           setTimeout(() => adGroupsSection.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4'), 3000);
         }
@@ -58,7 +58,7 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
         const campaignsSection = document.getElementById('campaigns-section');
         
         if (campaignsSection) {
-          campaignsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          campaignsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
           campaignsSection.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4');
           setTimeout(() => campaignsSection.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4'), 3000);
         }
