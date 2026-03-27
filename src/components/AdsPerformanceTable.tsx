@@ -49,11 +49,7 @@ export default function AdsPerformanceTable({ ads, adGroups, advertiserId }: Ads
         const ad = info.row.original;
         return (
           <div className="flex items-center min-w-[200px]">
-            {/* 画像読み込みを防止するため、imgタグをコメントアウト */}
-            {/* <img src={ad.image_path ?? undefined} className="w-12 h-10 object-cover rounded border border-gray-100 mr-3 shadow-sm" alt="" /> */}
-            <div className="w-12 h-10 bg-gray-200 rounded border border-gray-100 mr-3 flex items-center justify-center text-[10px] text-gray-500">
-              IMG
-            </div>
+            <img src={ad.image_path ?? undefined} className="w-12 h-10 object-cover rounded border border-gray-100 mr-3 shadow-sm" alt="" />
             <div>
               <div className="text-sm font-bold text-gray-900 leading-none mb-1">{ad.title}</div>
               <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">ID: {ad.id}</div>
