@@ -181,7 +181,6 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
             </div>
           </div>
           <div className="flex flex-col items-end gap-3">
-            <Link href="/" className="text-blue-600 hover:underline font-medium text-sm">← Back to Portal</Link>
             <Link 
               href={`/advertiser/${id}/simulator`}
               className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-black transition-all shadow-lg shadow-slate-200 flex items-center gap-2 text-sm"
