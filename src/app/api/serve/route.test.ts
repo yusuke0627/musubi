@@ -16,7 +16,7 @@ describe('GET /api/serve', () => {
 
     await prisma.campaign.create({ data: { id: 1, advertiser_id: 1, name: 'Camp 1', budget: 1000, spent: 0 } });
     await prisma.adGroup.create({ data: { id: 1, campaign_id: 1, name: 'Group 1', max_bid: 100, target_device: 'all', is_all_publishers: 1 } });
-    await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Ad 1', description: 'Desc 1', image_url: 'http://img.com', target_url: 'http://target.com', review_status: 'approved', status: 'ACTIVE' } });
+    await prisma.ad.create({ data: { id: 1, ad_group_id: 1, title: 'Ad 1', description: 'Desc 1', image_path: '/uploads/ads/test.jpg', target_url: 'http://target.com', review_status: 'approved', status: 'ACTIVE' } });
   });
 
   it('should return 400 if ad_unit_id is missing', async () => {

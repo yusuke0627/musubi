@@ -4,7 +4,7 @@ interface AdCreativeProps {
   ad: {
     title: string;
     description: string;
-    image_url: string;
+    image_path: string;
   };
   clickUrl: string;
 }
@@ -34,7 +34,7 @@ export default function AdCreative({ ad, clickUrl }: AdCreativeProps) {
         <h4 style={{ margin: '0 0 5px 0', color: '#333' }}>{ad.title}</h4>
         <p style={{ fontSize: '12px', color: '#666', margin: '0 0 10px 0' }}>{ad.description}</p>
         <img 
-          src={ad.image_url} 
+          src={ad.image_path} 
           style={{ width: '100%', borderRadius: '4px', background: '#eee', minHeight: '100px', objectFit: 'cover' }} 
           alt="Ad" 
         />

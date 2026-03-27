@@ -39,7 +39,7 @@ const AdSchema = z.object({
   ad_group_id: z.coerce.number().int().positive(),
   title: z.string().min(1, "Title is required").max(255),
   description: z.string().max(1000).optional().default(""),
-  image_url: z.string().url("Must be a valid URL"),
+  image_path: z.string().min(1, "Image path is required"),
   target_url: z.string().url("Must be a valid URL"),
 });
 
@@ -136,7 +136,7 @@ export async function createAd(formData: FormData) {
     throw new Error("Invalid ad data");
   }
 
-  const { advertiser_id, ad_group_id, title, description, image_url, target_url } = parsed.data;
+  const { advertiser_id, ad_group_id, title, description, image_path, target_url } = parsed.data;
   await checkAuth(advertiser_id);
 
   await prisma.ad.create({
@@ -144,7 +144,7 @@ export async function createAd(formData: FormData) {
       ad_group_id,
       title,
       description,
-      image_url,
+      image_path,
       target_url,
       review_status: 'pending',
       status: 'ACTIVE',
@@ -293,7 +293,7 @@ export async function updateAd(formData: FormData) {
     throw new Error("Invalid ad data");
   }
 
-  const { advertiser_id, ad_group_id, title, description, image_url, target_url } = parsed.data;
+  const { advertiser_id, ad_group_id, title, description, image_path, target_url } = parsed.data;
   await checkAuth(advertiser_id);
 
   const current = await prisma.ad.findUnique({
@@ -305,7 +305,7 @@ export async function updateAd(formData: FormData) {
   const isCreativeChanged = 
     current.title !== title || 
     current.description !== description || 
-    current.image_url !== image_url || 
+    current.image_path !== image_path || 
     current.target_url !== target_url;
 
   const newStatus = isCreativeChanged ? 'pending' : current.review_status;
@@ -316,7 +316,7 @@ export async function updateAd(formData: FormData) {
       ad_group_id,
       title,
       description,
-      image_url,
+      image_path,
       target_url,
       review_status: newStatus,
     }

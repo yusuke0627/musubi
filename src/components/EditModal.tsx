@@ -156,8 +156,8 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data, c
                 <textarea name="description" defaultValue={data.description} className="w-full p-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-medium" rows={2} />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Image URL</label>
-                <input type="url" name="image_url" defaultValue={data.image_url} className="w-full p-2 border rounded-lg text-xs text-slate-900 font-medium" required />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Image Path</label>
+                <input type="url" name="image_path" defaultValue={data.image_path} className="w-full p-2 border rounded-lg text-xs text-slate-900 font-medium" required />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Target URL</label>
