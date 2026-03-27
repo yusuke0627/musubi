@@ -40,6 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 *.db
+!prisma/*.db  # Keep prisma directory structure but ignore db files in git
+# Test database (generated during test runs)
+test.db
+test.db-journal
 
 /src/generated/prisma
 

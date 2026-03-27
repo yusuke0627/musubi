@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 interface AlertActionHandlerProps {
   campaigns: { id: number; name: string }[];
@@ -8,30 +9,40 @@ interface AlertActionHandlerProps {
 }
 
 export default function AlertActionHandler({ campaigns, adGroups }: AlertActionHandlerProps) {
-  const hasRunRef = useRef(false);
+  const searchParams = useSearchParams();
+  const highlight = searchParams.get('highlight');
+  const campaignId = searchParams.get('campaign_id');
+  const edit = searchParams.get('edit');
 
   useEffect(() => {
-    // Strict Mode対策：2回実行されるのを防ぐ
-    if (hasRunRef.current) return;
-    hasRunRef.current = true;
-    
-    // URLパラメータを取得
-    const params = new URLSearchParams(window.location.search);
-    const highlight = params.get('highlight');
-    const campaignId = params.get('campaign_id');
-    const edit = params.get('edit');
+    // URLパラメータが変わるたびに実行される
 
-    // パラメータがない場合は何もしない
-    if (!highlight && !edit) return;
+    // パラメータがない場合は sessionStorage をクリアして終了
+    if (!highlight && !edit) {
+      sessionStorage.removeItem('editCampaignId');
+      sessionStorage.removeItem('editAdGroupId');
+      return;
+    }
 
-    // requestAnimationFrameでDOM準備完了後に実行
-    requestAnimationFrame(() => {
+    // 異なるハイライトタイプの場合、既存のsessionStorageをクリア
+    if (highlight === 'create-ad') {
+      sessionStorage.removeItem('editCampaignId');
+      sessionStorage.removeItem('editAdGroupId');
+    } else if (highlight === 'adgroups') {
+      sessionStorage.removeItem('editCampaignId');
+    } else if (highlight === 'campaigns') {
+      sessionStorage.removeItem('editAdGroupId');
+    }
+
+    // DOM要素の存在を確認してから実行
       // 1. NO_ADS_IN_CAMPAIGN: Scroll to create-ad section
       if (highlight === 'create-ad' && campaignId) {
         const createAdSection = document.getElementById('create-ad-section');
         
         if (createAdSection) {
-          createAdSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const rect = createAdSection.getBoundingClientRect();
+          const scrollTop = window.scrollY + rect.top + 400; // 400px余裕を持たせて下にスクロール
+          window.scrollTo({ top: scrollTop, behavior: 'smooth' });
           createAdSection.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4');
           setTimeout(() => createAdSection.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4'), 3000);
         }
@@ -43,7 +54,9 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
         const adGroupsSection = document.getElementById('adgroups-section');
         
         if (adGroupsSection) {
-          adGroupsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const rect = adGroupsSection.getBoundingClientRect();
+          const scrollTop = window.scrollY + rect.top + 400; // 400px余裕を持たせて下にスクロール
+          window.scrollTo({ top: scrollTop, behavior: 'smooth' });
           adGroupsSection.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4');
           setTimeout(() => adGroupsSection.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4'), 3000);
         }
@@ -54,20 +67,21 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
 
       // 3. NO_BUDGET / BUDGET_EXHAUSTED: Scroll to campaigns table and trigger edit modal
       if (highlight === 'campaigns' && edit?.startsWith('campaign-')) {
-        const campaignId = parseInt(edit.replace('campaign-', ''));
+        const editCampaignId = parseInt(edit.replace('campaign-', ''));
         const campaignsSection = document.getElementById('campaigns-section');
         
         if (campaignsSection) {
-          campaignsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const rect = campaignsSection.getBoundingClientRect();
+          const scrollTop = window.scrollY + rect.top + 400; // 400px余裕を持たせて下にスクロール
+          window.scrollTo({ top: scrollTop, behavior: 'smooth' });
           campaignsSection.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4');
           setTimeout(() => campaignsSection.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4'), 3000);
         }
 
         // Store the campaign to edit in sessionStorage for the table component to pick up
-        sessionStorage.setItem('editCampaignId', campaignId.toString());
+        sessionStorage.setItem('editCampaignId', editCampaignId.toString());
       }
-    });
-  }, []);
+  }, [highlight, edit, campaignId]); // URLパラメータが変わるたびに再実行
 
   return null;
 }
