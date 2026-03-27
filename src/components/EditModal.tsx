@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef } from "react";
 import { updateCampaign, updateAdGroup, updateAd } from "@/app/advertiser/[id]/actions";
 
 interface EditModalProps {
@@ -13,13 +14,87 @@ interface EditModalProps {
 }
 
 export default function EditModal({ isOpen, onClose, advertiserId, type, data, campaigns = [], adGroups = [] }: EditModalProps) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(data?.image_path || null);
+  const [error, setError] = useState<string | null>(null);
+  const [hasNewImage, setHasNewImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!isOpen) return null;
 
-  const handleSubmit = async (formData: FormData) => {
-    if (type === "campaign") await updateCampaign(formData);
-    else if (type === "adGroup") await updateAdGroup(formData);
-    else if (type === "ad") await updateAd(formData);
-    onClose();
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // ファイルサイズチェック (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError("File size exceeds 5MB limit");
+        return;
+      }
+
+      // ファイル形式チェック
+      const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+      if (!allowedTypes.includes(file.type)) {
+        setError("Invalid file type. Allowed: JPEG, PNG, GIF, WebP");
+        return;
+      }
+
+      setError(null);
+      setHasNewImage(true);
+      // プレビュー表示
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    setIsUploading(true);
+
+    try {
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+
+      // 広告編集時で新しい画像が選択されている場合
+      if (type === "ad" && hasNewImage && fileInputRef.current?.files?.[0]) {
+        const file = fileInputRef.current.files[0];
+        
+        // 画像をアップロード
+        const uploadFormData = new FormData();
+        uploadFormData.append("file", file);
+        uploadFormData.append("advertiser_id", advertiserId);
+
+        const uploadResponse = await fetch("/api/upload", {
+          method: "POST",
+          body: uploadFormData,
+        });
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json();
+          throw new Error(errorData.error || "Failed to upload image");
+        }
+
+        const uploadResult = await uploadResponse.json();
+        formData.append("image_path", uploadResult.path);
+      } else if (type === "ad") {
+        // 新しい画像がない場合は既存のパスを使用
+        formData.append("image_path", data.image_path || "");
+      }
+
+      // Server Actionを呼び出し
+      if (type === "campaign") await updateCampaign(formData);
+      else if (type === "adGroup") await updateAdGroup(formData);
+      else if (type === "ad") await updateAd(formData);
+      
+      setIsUploading(false);
+      onClose();
+    } catch (err) {
+      setIsUploading(false);
+      setError(err instanceof Error ? err.message : "An error occurred");
+    }
   };
 
   return (
@@ -32,7 +107,7 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data, c
           </button>
         </header>
 
-        <form action={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <input type="hidden" name="id" value={data.id} />
           <input type="hidden" name="advertiser_id" value={advertiserId} />
 
@@ -156,9 +231,31 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data, c
                 <textarea name="description" defaultValue={data.description} className="w-full p-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-medium" rows={2} />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Image URL</label>
-                <input type="url" name="image_url" defaultValue={data.image_url} className="w-full p-2 border rounded-lg text-xs text-slate-900 font-medium" required />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Image Upload</label>
+                <input 
+                  ref={fileInputRef}
+                  type="file" 
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  onChange={handleFileChange}
+                  className="w-full p-2 border rounded-lg text-xs file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100" 
+                />
+                <p className="mt-1 text-[10px] text-gray-500">
+                  Select new image to replace. Supported: JPEG, PNG, GIF, WebP (max 5MB)
+                </p>
               </div>
+              {/* 画像プレビュー */}
+              {previewUrl && (
+                <div className="border border-gray-200 rounded-lg p-2">
+                  <p className="text-[10px] text-gray-500 mb-1 font-bold uppercase">
+                    {hasNewImage ? "New Preview" : "Current Image"}
+                  </p>
+                  <img 
+                    src={previewUrl} 
+                    alt="Preview" 
+                    className="max-w-full h-auto max-h-[150px] object-contain rounded"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Target URL</label>
                 <input type="url" name="target_url" defaultValue={data.target_url} className="w-full p-2 border rounded-lg text-xs text-slate-900 font-medium" required />
@@ -166,16 +263,36 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data, c
             </>
           )}
 
+          {error && (
+            <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-lg text-xs">
+              {error}
+            </div>
+          )}
+
           <div className="pt-4 flex gap-3">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-200 rounded-lg font-bold text-gray-500 hover:bg-gray-50 transition-colors">
               Cancel
             </button>
-            <button type="submit" className={`flex-1 px-4 py-2 rounded-lg font-bold text-white shadow-lg transition-colors ${
-              type === 'campaign' ? 'bg-slate-800 hover:bg-slate-700' :
-              type === 'adGroup' ? 'bg-emerald-600 hover:bg-emerald-700' :
-              'bg-blue-600 hover:bg-blue-700'
-            }`}>
-              Save Changes
+            <button 
+              type="submit" 
+              disabled={isUploading}
+              className={`flex-1 px-4 py-2 rounded-lg font-bold text-white shadow-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                type === 'campaign' ? 'bg-slate-800 hover:bg-slate-700' :
+                type === 'adGroup' ? 'bg-emerald-600 hover:bg-emerald-700' :
+                'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {isUploading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
             </button>
           </div>
         </form>

@@ -12,7 +12,8 @@ import PlacementReportTable from "@/components/PlacementReportTable";
 import InsightSection from "@/components/InsightSection";
 import OptimizationAlertSection from "@/components/OptimizationAlertSection";
 import AlertActionHandler from "@/components/AlertActionHandler";
-import { createCampaign, createAdGroup, createAd, createConversionRule, deleteConversionRule } from "./actions";
+import { createCampaign, createAdGroup, createConversionRule, deleteConversionRule } from "./actions";
+import CreateAdForm from "@/components/CreateAdForm";
 import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
@@ -141,7 +142,14 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
     const cvRevenue = conversions.reduce((acc, curr) => acc + curr.revenue, 0);
 
     return {
-      ...ad,
+      id: ad.id,
+      title: ad.title,
+      image_path: ad.image_path,
+      description: ad.description,
+      status: ad.status,
+      rejection_reason: ad.rejection_reason,
+      target_url: ad.target_url,
+      ad_group_id: ad.ad_group_id,
       group_name: ad.adGroup.name,
       max_bid: ad.adGroup.max_bid,
       target_device: ad.adGroup.target_device,
@@ -336,30 +344,7 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
               <span className="bg-blue-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs mr-2 shadow-sm">3</span>
               New Ad
             </h2>
-            <form action={createAd} className="space-y-4">
-              <input type="hidden" name="advertiser_id" value={id} />
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Ad Group</label>
-                <select name="ad_group_id" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none bg-white" required>
-                  {adGroups.map(g => <option key={g.id} value={g.id}>{g.name} ({g.campaign_name})</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Title</label>
-                <input type="text" name="title" className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none" placeholder="Ad Title" required />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Image URL</label>
-                <input type="url" name="image_url" className="w-full p-2 border border-gray-200 rounded-lg text-xs" defaultValue="https://placehold.jp/300x250.png?text=New+Ad" required />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Target URL</label>
-                <input type="url" name="target_url" className="w-full p-2 border border-gray-200 rounded-lg text-xs" placeholder="https://..." required />
-              </div>
-              <button type="submit" className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-md">
-                Publish Ad
-              </button>
-            </form>
+            <CreateAdForm advertiserId={id} adGroups={adGroups.map(g => ({ id: g.id, name: g.name, campaign_name: g.campaign_name }))} />
           </section>
         </div>
 

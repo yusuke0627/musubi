@@ -42,3 +42,6 @@ next-env.d.ts
 *.db
 
 /src/generated/prisma
+
+# uploaded ad images
+/public/uploads/ads/*

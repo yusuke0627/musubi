@@ -8,7 +8,7 @@ import EditModal from "./EditModal";
 interface AdPerformance {
   id: number;
   title: string;
-  image_url: string | null;
+  image_path: string | null;
   description: string | null;
   status: string;
   rejection_reason?: string | null;
