@@ -34,8 +34,7 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
       sessionStorage.removeItem('editAdGroupId');
     }
 
-    // requestAnimationFrameでDOM準備完了後に実行
-    requestAnimationFrame(() => {
+    // DOM要素の存在を確認してから実行
       // 1. NO_ADS_IN_CAMPAIGN: Scroll to create-ad section
       if (highlight === 'create-ad' && campaignId) {
         const createAdSection = document.getElementById('create-ad-section');
@@ -76,7 +75,6 @@ export default function AlertActionHandler({ campaigns, adGroups }: AlertActionH
         // Store the campaign to edit in sessionStorage for the table component to pick up
         sessionStorage.setItem('editCampaignId', editCampaignId.toString());
       }
-    });
   }, [highlight, edit, campaignId]); // URLパラメータが変わるたびに再実行
 
   return null;
