@@ -42,3 +42,11 @@ next-env.d.ts
 *.db
 
 /src/generated/prisma
+
+# Uploaded ad images (user uploads)
+# Track only seed images in root, ignore advertiser subdirectories
+/public/uploads/ads/*/
+!/public/uploads/ads/*.jpg
+!/public/uploads/ads/*.jpeg
+!/public/uploads/ads/*.png
+!/public/uploads/ads/*.gif
