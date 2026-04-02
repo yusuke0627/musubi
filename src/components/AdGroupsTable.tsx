@@ -12,6 +12,8 @@ interface AdGroup {
   name: string;
   max_bid: number;
   target_device: string;
+  target_category?: string | null;
+  targeting?: string | null;
   conversions: number;
   revenue: number;
 }
