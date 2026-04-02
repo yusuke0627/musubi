@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { parseUserAgentContext } from "@/lib/userAgent";
+import { checkTargeting } from "@/lib/targeting";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -97,27 +98,9 @@ export async function GET(req: NextRequest) {
     JOIN ad_stats s ON ads.id = s.id
   `);
 
-  // OSターゲティングのフィルタリング
+  // OS・スケジュールターゲティングのフィルタリング
   const matchedAds = candidateAds.filter((ad) => {
-    if (!ad.targeting) return true;
-
-    try {
-      const targetingRules = JSON.parse(ad.targeting);
-      
-      // OSターゲティングの判定
-      if (targetingRules.os && Array.isArray(targetingRules.os) && targetingRules.os.length > 0) {
-        if (!targetingRules.os.includes(os)) {
-          return false; // OSが一致しなければ弾く
-        }
-      }
-    } catch (e) {
-      console.error("Failed to parse targeting JSON", e);
-      // パース失敗時は安全のために配信対象外にするか、あるいは全配信にするか... 
-      // ここでは、おかしなデータは配信しない方針にするね！
-      return false; 
-    }
-    
-    return true;
+    return checkTargeting(ad.targeting, { os, dayOfWeek, hour });
   });
 
   // スコア順に並べ替えてトップを選択

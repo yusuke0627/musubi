@@ -12,6 +12,7 @@ import PlacementReportTable from "@/components/PlacementReportTable";
 import InsightSection from "@/components/InsightSection";
 import OptimizationAlertSection from "@/components/OptimizationAlertSection";
 import AlertActionHandler from "@/components/AlertActionHandler";
+import ScheduleSelector from "@/components/ScheduleSelector";
 import { createCampaign, createAdGroup, createAd, createConversionRule, deleteConversionRule } from "./actions";
 import { auth } from "@/auth";
 
@@ -323,6 +324,11 @@ export default async function AdvertiserDashboard({ params }: PageProps) {
                   ))}
                 </div>
                 <p className="mt-1 text-[10px] text-slate-500 italic">If none selected, all OS will be targeted.</p>
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider font-black text-slate-500 mb-2">Target Schedule (Optional)</label>
+                <ScheduleSelector />
+                <p className="mt-1 text-[10px] text-slate-500 italic">Empty means all times.</p>
               </div>
               <button type="submit" className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-bold hover:bg-emerald-700 transition-colors shadow-md">
                 Create Ad Group

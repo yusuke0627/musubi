@@ -15,6 +15,19 @@ export default function AuctionSimulator({ params }: PageProps) {
   const [ua, setUa] = useState<string>("Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Mobile/15E148 Safari/604.1");
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [useRealTime, setUseRealTime] = useState(true);
+  const [emulatedDay, setEmulatedDay] = useState<number>(new Date().getDay());
+  const [emulatedHour, setEmulatedHour] = useState<number>(new Date().getHours());
+
+  const DAYS = [
+    { value: 0, label: "Sun" },
+    { value: 1, label: "Mon" },
+    { value: 2, label: "Tue" },
+    { value: 3, label: "Wed" },
+    { value: 4, label: "Thu" },
+    { value: 5, label: "Fri" },
+    { value: 6, label: "Sat" },
+  ];
 
   const presets = [
     { name: "iPhone (Safari)", ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Mobile/15E148 Safari/604.1" },
@@ -44,7 +57,11 @@ export default function AuctionSimulator({ params }: PageProps) {
   const runSimulation = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/inspect?ad_unit_id=${selectedAdUnit}&ua=${encodeURIComponent(ua)}`);
+      let url = `/api/inspect?ad_unit_id=${selectedAdUnit}&ua=${encodeURIComponent(ua)}`;
+      if (!useRealTime) {
+        url += `&day_of_week=${emulatedDay}&hour=${emulatedHour}`;
+      }
+      const res = await fetch(url);
       const data = await res.json();
       setResults(data);
     } catch (e) {
@@ -119,6 +136,46 @@ export default function AuctionSimulator({ params }: PageProps) {
                   />
                 </div>
 
+                <div className="border-t border-slate-100 pt-4">
+                  <label className="flex items-center gap-2 mb-3">
+                    <input
+                      type="checkbox"
+                      checked={useRealTime}
+                      onChange={(e) => setUseRealTime(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-xs font-bold text-slate-600">Use Current Server Time</span>
+                  </label>
+                  {!useRealTime && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Day</label>
+                        <select
+                          value={emulatedDay}
+                          onChange={(e) => setEmulatedDay(parseInt(e.target.value, 10))}
+                          className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium"
+                        >
+                          {DAYS.map(d => (
+                            <option key={d.value} value={d.value}>{d.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Hour</label>
+                        <select
+                          value={emulatedHour}
+                          onChange={(e) => setEmulatedHour(parseInt(e.target.value, 10))}
+                          className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium"
+                        >
+                          {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                            <option key={h} value={h}>{h}:00</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <button 
                   onClick={runSimulation}
                   disabled={loading}
@@ -147,6 +204,14 @@ export default function AuctionSimulator({ params }: PageProps) {
                     <span className="text-slate-400">Category</span>
                     <span className="font-bold uppercase tracking-wider text-[10px] bg-slate-800 px-2 py-0.5 rounded">{results.context.category}</span>
                   </div>
+                  {results.context.emulated && (
+                    <div className="flex justify-between border-b border-slate-800 pb-2">
+                      <span className="text-slate-400">Emulated Time</span>
+                      <span className="font-bold text-amber-400">
+                        {DAYS.find(d => d.value === results.context.day_of_week)?.label} {results.context.hour}:00
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-slate-400">Total Ads</span>
                     <span className="font-bold text-blue-400">{results.auction.total_ads}</span>

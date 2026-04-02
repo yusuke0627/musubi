@@ -77,7 +77,29 @@ const AdGroupSchema = z.object({
   target_category: z.string().optional().nullable().transform(v => v === "" ? null : v),
   target_publishers: z.array(z.string()).optional().default([]),
   target_os: z.array(z.string()).optional().default([]),
+  target_schedule: z.array(z.string()).optional().default([]),
 });
+
+function buildTargetingJson(targetOs: string[], targetSchedule: string[]): string | null {
+  const targeting: Record<string, unknown> = {};
+  if (targetOs.length > 0) targeting.os = targetOs;
+  if (targetSchedule.length > 0) {
+    const scheduleMap: Record<string, number[]> = {};
+    for (const val of targetSchedule) {
+      const [day, hourStr] = val.split('-');
+      if (day && hourStr) {
+        if (!scheduleMap[day]) scheduleMap[day] = [];
+        scheduleMap[day].push(parseInt(hourStr, 10));
+      }
+    }
+    if (Object.keys(scheduleMap).length > 0) {
+      targeting.schedule = Object.fromEntries(
+        Object.entries(scheduleMap).map(([k, v]) => [k, [...new Set(v)].sort((a, b) => a - b)])
+      );
+    }
+  }
+  return Object.keys(targeting).length > 0 ? JSON.stringify(targeting) : null;
+}
 
 const AdSchema = z.object({
   advertiser_id: z.coerce.number().int().positive(),
@@ -128,6 +150,7 @@ export async function createAdGroup(formData: FormData) {
   const data = Object.fromEntries(formData.entries());
   data.target_publishers = formData.getAll("target_publishers") as any;
   data.target_os = formData.getAll("target_os") as any;
+  data.target_schedule = formData.getAll("target_schedule") as any;
   const parsed = AdGroupSchema.safeParse(data);
 
   if (!parsed.success) {
@@ -135,11 +158,11 @@ export async function createAdGroup(formData: FormData) {
     throw new Error("Invalid ad group data");
   }
 
-  const { advertiser_id, campaign_id, name, max_bid, target_device, target_category, target_publishers, target_os } = parsed.data;
+  const { advertiser_id, campaign_id, name, max_bid, target_device, target_category, target_publishers, target_os, target_schedule } = parsed.data;
   await checkAuth(advertiser_id);
 
   const isAll = target_publishers.includes('all') || target_publishers.length === 0;
-  const targetingJson = target_os.length > 0 ? JSON.stringify({ os: target_os }) : null;
+  const targetingJson = buildTargetingJson(target_os, target_schedule);
 
   await prisma.$transaction(async (tx) => {
     const adGroup = await tx.adGroup.create({
@@ -289,6 +312,7 @@ export async function updateAdGroup(formData: FormData) {
 
   data.target_publishers = formData.getAll("target_publishers") as any;
   data.target_os = formData.getAll("target_os") as any;
+  data.target_schedule = formData.getAll("target_schedule") as any;
   const parsed = AdGroupSchema.safeParse(data);
 
   if (!parsed.success) {
@@ -296,11 +320,11 @@ export async function updateAdGroup(formData: FormData) {
     throw new Error("Invalid ad group data");
   }
 
-  const { advertiser_id, campaign_id, name, max_bid, target_device, target_category, target_publishers, target_os } = parsed.data;
+  const { advertiser_id, campaign_id, name, max_bid, target_device, target_category, target_publishers, target_os, target_schedule } = parsed.data;
   await checkAuth(advertiser_id);
 
   const isAll = target_publishers.includes('all') || target_publishers.length === 0;
-  const targetingJson = target_os.length > 0 ? JSON.stringify({ os: target_os }) : null;
+  const targetingJson = buildTargetingJson(target_os, target_schedule);
 
   await prisma.$transaction(async (tx) => {
     await tx.adGroup.update({

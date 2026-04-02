@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { GET } from './route';
@@ -201,6 +201,72 @@ describe('GET /api/serve', () => {
         headers: { 'user-agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F)' }
       }));
       expect(resAndroid.status).toBe(200);
+    });
+  });
+
+  describe('Schedule Targeting', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should serve an ad when schedule matches current day and hour', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2024-01-15T10:00:00')); // Monday 10:00
+
+      await prisma.adGroup.update({
+        where: { id: 1 },
+        data: { targeting: JSON.stringify({ schedule: { mon: [9, 10, 11] } }) }
+      });
+
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1');
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).toContain('Ad 1');
+    });
+
+    it('should return 204 when schedule day mismatches', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2024-01-16T10:00:00')); // Tuesday 10:00
+
+      await prisma.adGroup.update({
+        where: { id: 1 },
+        data: { targeting: JSON.stringify({ schedule: { mon: [9, 10, 11] } }) }
+      });
+
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1');
+      const res = await GET(req);
+      expect(res.status).toBe(204);
+    });
+
+    it('should return 204 when schedule hour mismatches', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2024-01-15T14:00:00')); // Monday 14:00
+
+      await prisma.adGroup.update({
+        where: { id: 1 },
+        data: { targeting: JSON.stringify({ schedule: { mon: [9, 10, 11] } }) }
+      });
+
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1');
+      const res = await GET(req);
+      expect(res.status).toBe(204);
+    });
+
+    it('should serve an ad when schedule is not set', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2024-01-15T10:00:00')); // Monday 10:00
+
+      await prisma.adGroup.update({
+        where: { id: 1 },
+        data: { targeting: JSON.stringify({ os: ['iOS'] }) }
+      });
+
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X)' }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(200);
     });
   });
 
