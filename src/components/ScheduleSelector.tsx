@@ -21,7 +21,15 @@ export default function ScheduleSelector({
   name = "target_schedule",
   defaultValue = [],
 }: ScheduleSelectorProps) {
-  const [activeDay, setActiveDay] = useState<string>(DAYS[0].key);
+  // defaultValue から最初にデータがある曜日を見つける
+  const getInitialActiveDay = () => {
+    if (defaultValue.length === 0) return DAYS[0].key;
+    const firstEntry = defaultValue[0];
+    const dayKey = firstEntry.split("-")[0];
+    return DAYS.find(d => d.key === dayKey)?.key || DAYS[0].key;
+  };
+
+  const [activeDay, setActiveDay] = useState<string>(getInitialActiveDay());
   const [selected, setSelected] = useState<Set<string>>(new Set(defaultValue));
 
   const toggle = (day: string, hour: number) => {
