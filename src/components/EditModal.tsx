@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { updateCampaign, updateAdGroup, updateAd } from "@/app/advertiser/[id]/actions";
+import ScheduleSelector from "@/components/ScheduleSelector";
 
 interface EditModalProps {
   isOpen: boolean;
@@ -14,6 +16,19 @@ interface EditModalProps {
 
 export default function EditModal({ isOpen, onClose, advertiserId, type, data, campaigns = [], adGroups = [] }: EditModalProps) {
   if (!isOpen) return null;
+
+  // Parse initial schedule selections from targeting JSON
+  const initialSchedule: string[] = [];
+  try {
+    if (data.targeting) {
+      const parsed = typeof data.targeting === "string" ? JSON.parse(data.targeting) : data.targeting;
+      Object.entries(parsed.schedule || {}).forEach(([day, hours]) => {
+        (hours as number[]).forEach((h) => initialSchedule.push(`${day}-${h}`));
+      });
+    }
+  } catch (e) {
+    console.error("Failed to parse targeting schedule", e);
+  }
 
   const handleSubmit = async (formData: FormData) => {
     if (type === "campaign") await updateCampaign(formData);
@@ -131,6 +146,12 @@ export default function EditModal({ isOpen, onClose, advertiserId, type, data, c
                   })()}
                 </div>
                 <p className="mt-1 text-[10px] text-slate-500 italic">If none selected, all OS will be targeted.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Target Schedule (Optional)</label>
+                <ScheduleSelector defaultValue={initialSchedule} />
+                <p className="mt-1 text-[10px] text-slate-500 italic">Select days and hours to target. Empty means all times.</p>
               </div>
             </>
           )}

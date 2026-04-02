@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { parseUserAgentContext } from "@/lib/userAgent";
+import { checkTargeting } from "@/lib/targeting";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -30,8 +31,11 @@ export async function GET(req: NextRequest) {
   const currentDevice = device.toLowerCase();
 
   const now = new Date();
-  const dayOfWeek = now.getDay();
-  const hour = now.getHours();
+  const dayOfWeekParam = searchParams.get("day_of_week");
+  const hourParam = searchParams.get("hour");
+  const dayOfWeek = dayOfWeekParam !== null ? parseInt(dayOfWeekParam, 10) : now.getDay();
+  const hour = hourParam !== null ? parseInt(hourParam, 10) : now.getHours();
+  const isEmulated = dayOfWeekParam !== null || hourParam !== null;
 
   // 2. 全広告候補の取得 (ステータス無視で全部取る)
   const allAds = await prisma.ad.findMany({
@@ -109,21 +113,25 @@ export async function GET(req: NextRequest) {
       status = "REJECTED";
       reason = "CAMPAIGN_OUT_OF_DATE_RANGE";
     }
-    // ステップ9: スケジュールチェック
+    // ステップ9: スケジュールチェック (ad_schedulesテーブル)
     else if (group.schedules.length > 0 && !group.schedules.some(s => s.day_of_week === dayOfWeek && s.start_hour <= hour && s.end_hour >= hour)) {
       status = "REJECTED";
       reason = "OUT_OF_SCHEDULE";
     }
-    // ステップ10: OSターゲティング
-    else if (group.targeting) {
+    // ステップ10: OS・Scheduleターゲティング (targeting JSON)
+    else if (group.targeting && !checkTargeting(group.targeting, { os, dayOfWeek, hour })) {
+      status = "REJECTED";
+      // 理由を詳細化するため個別チェック
       try {
-        const targetingRules = JSON.parse(group.targeting);
-        if (targetingRules.os && Array.isArray(targetingRules.os) && targetingRules.os.length > 0 && !targetingRules.os.includes(os)) {
-          status = "REJECTED";
-          reason = `OS_MISMATCH (Target: ${targetingRules.os.join(',')}, Req: ${os})`;
+        const rules = JSON.parse(group.targeting);
+        if (rules.os && Array.isArray(rules.os) && rules.os.length > 0 && !rules.os.includes(os)) {
+          reason = `OS_MISMATCH (Target: ${rules.os.join(',')}, Req: ${os})`;
+        } else if (rules.schedule) {
+          reason = "SCHEDULE_MISMATCH";
+        } else {
+          reason = "TARGETING_MISMATCH";
         }
-      } catch (e) {
-        status = "REJECTED";
+      } catch {
         reason = "INVALID_TARGETING_JSON";
       }
     }
@@ -162,7 +170,10 @@ export async function GET(req: NextRequest) {
       category: publisherCategory,
       os,
       device: currentDevice,
-      timestamp: now.toISOString()
+      timestamp: now.toISOString(),
+      emulated: isEmulated,
+      day_of_week: dayOfWeek,
+      hour,
     },
     auction: {
       total_ads: allAds.length,
