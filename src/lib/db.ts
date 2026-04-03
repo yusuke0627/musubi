@@ -1,28 +1,31 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@db";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import Database from "better-sqlite3";
+import path from "path";
+
+// Prisma 7 with Driver Adapter
+const adapter = new PrismaBetterSqlite3({
+  url: process.env.DATABASE_URL || "file:./adnetwork.db",
+});
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
-export const prisma = globalForPrisma.prisma || new PrismaClient({
-  log: ['query', 'error', 'warn'],
-});
+export const prisma = globalForPrisma.prisma || new PrismaClient({ adapter });
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-// Backward compatibility for better-sqlite3 based code during transition
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = (typeof process !== 'undefined' && typeof process.cwd === 'function')
-  ? path.join(process.cwd(), 'adnetwork.db')
-  : 'adnetwork.db';
+// Raw SQL database connection for existing code
+const dbPath =
+  typeof process !== "undefined" && typeof process.cwd === "function"
+    ? path.join(process.cwd(), "adnetwork.db")
+    : "adnetwork.db";
 
 export const db = new Database(dbPath);
 
 export function initSchema() {
   // Prisma handles schema via migrations now
-  // console.log('Schema is managed by Prisma migrations.');
 }
 
 export default prisma;

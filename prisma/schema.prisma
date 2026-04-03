@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "./generated/prisma"
 }
 
 // 配信制御用ステータス
@@ -14,7 +15,6 @@ enum EntityStatus {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model Advertiser {
@@ -133,7 +133,7 @@ model AdGroup {
   max_bid           Float                      @default(10)
   target_device     String                     @default("all")
   target_category   String?
-  targeting         String?                    // JSON: { "os": ["iOS", "Android"] }
+  targeting         String?                    // JSON: { "os": ["iOS", "Android"], "schedule": {...} }
   is_all_publishers Int                        @default(1) // 1: All, 0: Specific
   status            EntityStatus               @default(ACTIVE) // 配信制御用ステータス
   campaign          Campaign                   @relation(fields: [campaign_id], references: [id])

@@ -4,13 +4,16 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@db': path.resolve(__dirname, './prisma/generated/prisma/client'),
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     fileParallelism: false,
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
   },
 });

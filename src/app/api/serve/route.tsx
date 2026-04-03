@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@db";
 import { parseUserAgentContext } from "@/lib/userAgent";
 import { checkTargeting } from "@/lib/targeting";
 
