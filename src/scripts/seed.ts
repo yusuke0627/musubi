@@ -1,4 +1,4 @@
-import { PrismaClient, EntityStatus } from "../../prisma/generated/prisma/client";
+import { PrismaClient, EntityStatus } from "@db";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import bcrypt from 'bcryptjs';
 

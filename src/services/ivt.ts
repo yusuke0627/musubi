@@ -1,4 +1,4 @@
-import type { PrismaClient } from "../../prisma/generated/prisma/client";
+import type { PrismaClient } from "@db";
 
 /**
  * Checks if the given User-Agent string belongs to a known bot, crawler, or scraper.
