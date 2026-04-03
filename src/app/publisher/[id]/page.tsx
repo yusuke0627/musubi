@@ -222,7 +222,7 @@ export default async function PublisherDashboard({ params }: PageProps) {
               </form>
             </section>
 
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <section id="payout-section" className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
               <h2 className="text-lg font-black mb-4 text-slate-800 tracking-tight">Payout</h2>
               <div className="bg-slate-50 p-4 rounded-xl space-y-4">
                 <div className="flex justify-between items-end">

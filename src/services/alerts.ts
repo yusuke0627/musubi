@@ -206,7 +206,7 @@ export async function generatePublisherAlerts(publisherId: number): Promise<{
       action: {
         label: '支払いをリクエスト',
         type: 'link',
-        href: `/publisher/${publisherId}?highlight=payout`,
+        href: `/publisher/${publisherId}#payout-section`,
       },
       isDismissed: dismissedSet.has(alertId),
     });
