@@ -21,6 +21,7 @@ export const AlertType = {
   PARENT_PAUSED: 'PARENT_PAUSED',
   NO_BUDGET: 'NO_BUDGET',
   BUDGET_EXHAUSTED: 'BUDGET_EXHAUSTED',
+  PAYOUT_THRESHOLD_REACHED: 'PAYOUT_THRESHOLD_REACHED',
 } as const;
 
 export type AlertType = typeof AlertType[keyof typeof AlertType];

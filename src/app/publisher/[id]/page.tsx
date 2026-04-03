@@ -1,9 +1,11 @@
 import prisma from "@/lib/db";
 import { getDailyStats, getAdUnitStats } from "@/services/stats";
+import { generatePublisherAlerts } from "@/services/alerts";
 import Link from "next/link";
 import { notFound, forbidden } from "next/navigation";
 import StatsChart from "@/components/StatsChart";
 import AdUnitPerformanceTable from "@/components/AdUnitPerformanceTable";
+import PublisherAlertSection from "@/components/PublisherAlertSection";
 import { requestPayout, updatePublisherProfile, createApp, deleteApp, createAdUnit, deleteAdUnit } from "./actions";
 import { auth } from "@/auth";
 
@@ -40,6 +42,7 @@ export default async function PublisherDashboard({ params }: PageProps) {
   const clicksCount = await prisma.click.count({ where: { publisher_id: id, is_valid: 1 } });
   const dailyStats = await getDailyStats({ publisherId: id.toString() }) as any[];
   const adUnitStats = await getAdUnitStats(id.toString());
+  const publisherAlerts = await generatePublisherAlerts(id);
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">
@@ -51,6 +54,9 @@ export default async function PublisherDashboard({ params }: PageProps) {
           </div>
           <Link href="/" className="text-blue-600 hover:underline font-bold">← Back to Portal</Link>
         </header>
+
+        {/* Publisher Alerts */}
+        <PublisherAlertSection publisherId={id} initialAlerts={publisherAlerts} />
 
         {/* Overview Stats */}
         <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -221,11 +227,11 @@ export default async function PublisherDashboard({ params }: PageProps) {
               <div className="bg-slate-50 p-4 rounded-xl space-y-4">
                 <div className="flex justify-between items-end">
                   <span className="text-[10px] font-black text-slate-400 uppercase">Min. Payout</span>
-                  <span className="text-sm font-bold text-slate-700">¥1,000</span>
+                  <span className="text-sm font-bold text-slate-700">¥{publisher.min_payout_threshold.toLocaleString()}</span>
                 </div>
                 <form action={requestPayout}>
                   <input type="hidden" name="publisher_id" value={publisher.id} />
-                  <button type="submit" disabled={publisher.balance < 1000} className={`w-full py-3 rounded-xl font-black text-xs uppercase shadow-md transition-all ${publisher.balance < 1000 ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-100'}`}>Request Payout</button>
+                  <button type="submit" disabled={publisher.balance < publisher.min_payout_threshold} className={`w-full py-3 rounded-xl font-black text-xs uppercase shadow-md transition-all ${publisher.balance < 1000 ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-100'}`}>Request Payout</button>
                 </form>
               </div>
             </section>
