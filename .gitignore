@@ -46,6 +46,7 @@ test.db
 test.db-journal
 
 /src/generated/prisma
+/prisma/generated
 
 # Uploaded ad images (user uploads)
 # Track only seed images in root, ignore advertiser subdirectories
