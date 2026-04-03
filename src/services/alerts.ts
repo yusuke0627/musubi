@@ -167,3 +167,103 @@ export async function restoreAlert(
     },
   });
 }
+
+/**
+ * パブリッシャーの支払い関連アラートを生成する
+ * Dismiss済みのアラートは除外される
+ */
+export async function generatePublisherAlerts(publisherId: number): Promise<{
+  activeAlerts: OptimizationAlert[];
+  dismissedAlerts: OptimizationAlert[];
+}> {
+  const allAlerts: OptimizationAlert[] = [];
+
+  // パブリッシャー情報を取得
+  const publisher = await prisma.publisher.findUnique({
+    where: { id: publisherId },
+  });
+
+  if (!publisher) {
+    return { activeAlerts: [], dismissedAlerts: [] };
+  }
+
+  // Dismiss済みアラートを取得
+  const dismissedAlerts = await prisma.dismissedAlert.findMany({
+    where: { publisher_id: publisherId },
+  });
+  const dismissedSet = new Set(
+    dismissedAlerts.map(d => `${d.alert_type}-${d.entity_id}`)
+  );
+
+  // 💰 Suggestion: 支払い可能金額に達した
+  if (publisher.balance >= publisher.min_payout_threshold) {
+    const alertId = `${AlertType.PAYOUT_THRESHOLD_REACHED}-${publisher.id}`;
+    allAlerts.push({
+      id: alertId,
+      severity: 'suggestion' as AlertSeverity,
+      title: '支払い可能金額に達しました',
+      description: `現在の残高 ¥${publisher.balance.toLocaleString()} が最低支払い金額 ¥${publisher.min_payout_threshold.toLocaleString()} に達しました。`,
+      action: {
+        label: '支払いをリクエスト',
+        type: 'link',
+        href: `/publisher/${publisherId}#payout-section`,
+      },
+      isDismissed: dismissedSet.has(alertId),
+    });
+  }
+
+  // activeとdismissedに振り分け
+  const activeAlerts = allAlerts.filter(a => !a.isDismissed);
+  const dismissedAlertList = allAlerts.filter(a => a.isDismissed);
+
+  // severityでソート（critical > warning > suggestion）
+  const severityOrder = { critical: 0, warning: 1, suggestion: 2 };
+  activeAlerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+  dismissedAlertList.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+  return { activeAlerts, dismissedAlerts: dismissedAlertList };
+}
+
+/**
+ * パブリッシャーのアラートをDismiss（無視）する
+ */
+export async function dismissPublisherAlert(
+  publisherId: number,
+  alertId: string
+): Promise<void> {
+  const [alertType, entityId] = alertId.split(/-(.+)/); // 最初の-で分割
+  
+  if (!alertType || !entityId) {
+    throw new Error('Invalid alert ID format');
+  }
+
+  await prisma.dismissedAlert.create({
+    data: {
+      publisher_id: publisherId,
+      alert_type: alertType,
+      entity_id: entityId,
+    },
+  });
+}
+
+/**
+ * パブリッシャーのDismiss済みアラートを復活させる
+ */
+export async function restorePublisherAlert(
+  publisherId: number,
+  alertId: string
+): Promise<void> {
+  const [alertType, entityId] = alertId.split(/-(.+)/);
+  
+  if (!alertType || !entityId) {
+    throw new Error('Invalid alert ID format');
+  }
+
+  await prisma.dismissedAlert.deleteMany({
+    where: {
+      publisher_id: publisherId,
+      alert_type: alertType,
+      entity_id: entityId,
+    },
+  });
+}

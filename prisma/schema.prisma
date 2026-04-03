@@ -28,17 +28,18 @@ model Advertiser {
 }
 
 model Publisher {
-  id             Int                        @id @default(autoincrement())
-  name           String
-  category       String?
-  balance        Float                      @default(0)
-  total_earnings Float                      @default(0)
-  rev_share      Float                      @default(0.7)
-  payouts        Payout[]
-  apps           App[]
-  targetGroups   AdGroupTargetPublisher[]
-  impressions    Impression[]
-  clicks         Click[]
+  id                   Int                        @id @default(autoincrement())
+  name                 String
+  category             String?
+  balance              Float                      @default(0)
+  total_earnings       Float                      @default(0)
+  rev_share            Float                      @default(0.7)
+  min_payout_threshold Float                      @default(5000)
+  payouts              Payout[]
+  apps                 App[]
+  targetGroups         AdGroupTargetPublisher[]
+  impressions          Impression[]
+  clicks               Click[]
 
   @@map("publishers")
 }
@@ -241,11 +242,13 @@ model Conversion {
 // 最適化アラートのDismiss（無視）履歴
 model DismissedAlert {
   id            Int      @id @default(autoincrement())
-  advertiser_id Int
-  alert_type    String   // 'NO_ADS_IN_CAMPAIGN', 'PARENT_PAUSED', 'NO_BUDGET', 'BUDGET_EXHAUSTED'
+  advertiser_id Int?
+  publisher_id  Int?
+  alert_type    String   // 'NO_ADS_IN_CAMPAIGN', 'PARENT_PAUSED', 'NO_BUDGET', 'BUDGET_EXHAUSTED', 'PAYOUT_THRESHOLD_REACHED'
   entity_id     String   // campaign_idやad_group_idを文字列で保存
   created_at    DateTime @default(now())
 
   @@unique([advertiser_id, alert_type, entity_id])
+  @@unique([publisher_id, alert_type, entity_id])
   @@map("dismissed_alerts")
 }

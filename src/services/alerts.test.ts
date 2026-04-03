@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { generateOptimizationAlerts, dismissAlert, restoreAlert } from './alerts';
+import { generateOptimizationAlerts, dismissAlert, restoreAlert, generatePublisherAlerts, dismissPublisherAlert, restorePublisherAlert } from './alerts';
 import prisma from '../lib/db';
 import { clearDatabase } from '../lib/test-utils';
 import { AlertType } from '../types/alert';
@@ -378,6 +378,107 @@ describe('Alerts Service', () => {
       await restoreAlert(advertiser.id, `${AlertType.NO_ADS_IN_CAMPAIGN}-1`);
 
       const alerts = await generateOptimizationAlerts(advertiser.id);
+
+      expect(alerts.activeAlerts).toHaveLength(1);
+      expect(alerts.dismissedAlerts).toHaveLength(0);
+    });
+  });
+
+  describe('generatePublisherAlerts', () => {
+    it('should detect when balance reaches payout threshold (PAYOUT_THRESHOLD_REACHED)', async () => {
+      const publisher = await prisma.publisher.create({
+        data: { 
+          id: 1, 
+          name: 'Test Publisher',
+          balance: 5000,
+          min_payout_threshold: 5000,
+        }
+      });
+
+      const alerts = await generatePublisherAlerts(publisher.id);
+
+      expect(alerts.activeAlerts).toHaveLength(1);
+      expect(alerts.activeAlerts[0].id).toBe(`${AlertType.PAYOUT_THRESHOLD_REACHED}-1`);
+      expect(alerts.activeAlerts[0].severity).toBe('suggestion');
+      expect(alerts.activeAlerts[0].title).toBe('支払い可能金額に達しました');
+    });
+
+    it('should detect when balance exceeds payout threshold', async () => {
+      const publisher = await prisma.publisher.create({
+        data: { 
+          id: 1, 
+          name: 'Test Publisher',
+          balance: 10000,
+          min_payout_threshold: 5000,
+        }
+      });
+
+      const alerts = await generatePublisherAlerts(publisher.id);
+
+      expect(alerts.activeAlerts).toHaveLength(1);
+      expect(alerts.activeAlerts[0].id).toBe(`${AlertType.PAYOUT_THRESHOLD_REACHED}-1`);
+    });
+
+    it('should not generate alert when balance is below threshold', async () => {
+      const publisher = await prisma.publisher.create({
+        data: { 
+          id: 1, 
+          name: 'Test Publisher',
+          balance: 1000,
+          min_payout_threshold: 5000,
+        }
+      });
+
+      const alerts = await generatePublisherAlerts(publisher.id);
+
+      expect(alerts.activeAlerts).toHaveLength(0);
+    });
+
+    it('should return empty alerts for non-existent publisher', async () => {
+      const alerts = await generatePublisherAlerts(999);
+
+      expect(alerts.activeAlerts).toHaveLength(0);
+      expect(alerts.dismissedAlerts).toHaveLength(0);
+    });
+  });
+
+  describe('dismissPublisherAlert', () => {
+    it('should mark publisher alert as dismissed', async () => {
+      const publisher = await prisma.publisher.create({
+        data: { 
+          id: 1, 
+          name: 'Test Publisher',
+          balance: 5000,
+          min_payout_threshold: 5000,
+        }
+      });
+
+      // Dismissする
+      await dismissPublisherAlert(publisher.id, `${AlertType.PAYOUT_THRESHOLD_REACHED}-1`);
+
+      const alerts = await generatePublisherAlerts(publisher.id);
+
+      expect(alerts.activeAlerts).toHaveLength(0);
+      expect(alerts.dismissedAlerts).toHaveLength(1);
+    });
+  });
+
+  describe('restorePublisherAlert', () => {
+    it('should restore dismissed publisher alert', async () => {
+      const publisher = await prisma.publisher.create({
+        data: { 
+          id: 1, 
+          name: 'Test Publisher',
+          balance: 5000,
+          min_payout_threshold: 5000,
+        }
+      });
+
+      // DismissしてからRestore
+      await dismissPublisherAlert(publisher.id, `${AlertType.PAYOUT_THRESHOLD_REACHED}-1`);
+      await restorePublisherAlert(publisher.id, `${AlertType.PAYOUT_THRESHOLD_REACHED}-1`);
+
+      const alerts = await generatePublisherAlerts(publisher.id);
 
       expect(alerts.activeAlerts).toHaveLength(1);
       expect(alerts.dismissedAlerts).toHaveLength(0);
