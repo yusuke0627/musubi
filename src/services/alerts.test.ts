@@ -56,7 +56,7 @@ describe('Alerts Service', () => {
       expect(alerts.activeAlerts).toHaveLength(0);
     });
 
-    it('should not detect campaign with ads', async () => {
+    it('should not detect campaign with deliverable ads', async () => {
       const advertiser = await prisma.advertiser.create({
         data: { id: 1, name: 'Test Advertiser' }
       });
@@ -94,6 +94,90 @@ describe('Alerts Service', () => {
       const alerts = await generateOptimizationAlerts(advertiser.id);
 
       expect(alerts.activeAlerts).toHaveLength(0);
+    });
+
+    it('should detect campaign with only pending ads (NO_ADS_IN_CAMPAIGN)', async () => {
+      const advertiser = await prisma.advertiser.create({
+        data: { id: 1, name: 'Test Advertiser' }
+      });
+      
+      const campaign = await prisma.campaign.create({
+        data: {
+          id: 1,
+          advertiser_id: advertiser.id,
+          name: 'Campaign with Pending Ads',
+          status: 'ACTIVE',
+          budget: 10000,
+          daily_budget: 1000,
+        }
+      });
+      
+      const adGroup = await prisma.adGroup.create({
+        data: {
+          id: 1,
+          campaign_id: campaign.id,
+          name: 'Test AdGroup',
+        }
+      });
+      
+      // review_status='pending' の広告は配信可能ではない
+      await prisma.ad.create({
+        data: {
+          id: 1,
+          ad_group_id: adGroup.id,
+          title: 'Pending Ad',
+          target_url: 'http://test.com',
+          review_status: 'pending',
+          status: 'ACTIVE',
+        }
+      });
+
+      const alerts = await generateOptimizationAlerts(advertiser.id);
+
+      expect(alerts.activeAlerts).toHaveLength(1);
+      expect(alerts.activeAlerts[0].id).toBe(`${AlertType.NO_ADS_IN_CAMPAIGN}-1`);
+    });
+
+    it('should detect campaign with only paused ads (NO_ADS_IN_CAMPAIGN)', async () => {
+      const advertiser = await prisma.advertiser.create({
+        data: { id: 1, name: 'Test Advertiser' }
+      });
+      
+      const campaign = await prisma.campaign.create({
+        data: {
+          id: 1,
+          advertiser_id: advertiser.id,
+          name: 'Campaign with Paused Ads',
+          status: 'ACTIVE',
+          budget: 10000,
+          daily_budget: 1000,
+        }
+      });
+      
+      const adGroup = await prisma.adGroup.create({
+        data: {
+          id: 1,
+          campaign_id: campaign.id,
+          name: 'Test AdGroup',
+        }
+      });
+      
+      // status='PAUSED' の広告は配信可能ではない
+      await prisma.ad.create({
+        data: {
+          id: 1,
+          ad_group_id: adGroup.id,
+          title: 'Paused Ad',
+          target_url: 'http://test.com',
+          review_status: 'approved',
+          status: 'PAUSED',
+        }
+      });
+
+      const alerts = await generateOptimizationAlerts(advertiser.id);
+
+      expect(alerts.activeAlerts).toHaveLength(1);
+      expect(alerts.activeAlerts[0].id).toBe(`${AlertType.NO_ADS_IN_CAMPAIGN}-1`);
     });
 
     it('should detect parent paused (PARENT_PAUSED)', async () => {
