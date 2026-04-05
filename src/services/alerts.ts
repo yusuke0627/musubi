@@ -34,17 +34,21 @@ export async function generateOptimizationAlerts(advertiserId: number): Promise<
   // 各キャンペーンをチェック
   for (const campaign of campaigns) {
     // 🔴 Critical: 広告未設定のキャンペーン
-    const totalAds = campaign.adGroups.reduce(
-      (sum, ag) => sum + ag.ads.length, 0
+    // 配信可能な広告 = review_status='approved' かつ status='ACTIVE'
+    const deliverableAds = campaign.adGroups.reduce(
+      (sum, ag) => sum + ag.ads.filter(
+        ad => ad.review_status === 'approved' && ad.status === 'ACTIVE'
+      ).length,
+      0
     );
     
-    if (campaign.status === 'ACTIVE' && totalAds === 0) {
+    if (campaign.status === 'ACTIVE' && deliverableAds === 0) {
       const alertId = `${AlertType.NO_ADS_IN_CAMPAIGN}-${campaign.id}`;
       allAlerts.push({
         id: alertId,
         severity: 'critical' as AlertSeverity,
         title: '配信可能な広告がありません',
-        description: `キャンペーン「${campaign.name}」が有効ですが、紐づく広告が未設定です。`,
+        description: `アクティブなキャンペーンですが、配信可能な広告が1つもありません。`,
         action: {
           label: '広告を追加する',
           type: 'link',
