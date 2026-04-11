@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { Prisma } from "@db";
 import { parseUserAgentContext } from "@/lib/userAgent";
 import { checkTargeting } from "@/lib/targeting";
+import { getPrefectureFromIP, parseAcceptLanguage } from "@/lib/ipGeo";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -32,7 +33,13 @@ export async function GET(req: NextRequest) {
   // デバイス・OS判定
   const { os, device } = parseUserAgentContext(ua);
   const currentDevice = device.toLowerCase();
-  console.log(`[AdServe] UA: ${ua.substring(0, 50)}... OS: ${os}, Device: ${device}`);
+  
+  // 言語・地域判定
+  const acceptLanguage = req.headers.get("accept-language");
+  const languages = parseAcceptLanguage(acceptLanguage);
+  const prefecture = getPrefectureFromIP(ip.split(",")[0].trim());
+  
+  console.log(`[AdServe] UA: ${ua.substring(0, 50)}... OS: ${os}, Device: ${device}, Lang: ${languages.join(",")}, Region: ${prefecture || "unknown"}`);
 
   // 現在の時刻、曜日、時間を取得
   const now = new Date();
@@ -98,9 +105,9 @@ export async function GET(req: NextRequest) {
     JOIN ad_stats s ON ads.id = s.id
   `);
 
-  // OS・スケジュールターゲティングのフィルタリング
+  // OS・言語・地域・スケジュールターゲティングのフィルタリング
   const matchedAds = candidateAds.filter((ad) => {
-    return checkTargeting(ad.targeting, { os, dayOfWeek, hour });
+    return checkTargeting(ad.targeting, { os, dayOfWeek, hour, languages, prefecture });
   });
 
   // スコア順に並べ替えてトップを選択

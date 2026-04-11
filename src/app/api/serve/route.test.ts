@@ -299,4 +299,215 @@ describe('GET /api/serve', () => {
       expect(html).not.toContain('Ad 1');
     });
   });
+
+  describe('Language Targeting', () => {
+    it('should serve an ad when language matches (Japanese)', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ languages: ["ja"] }) } 
+      });
+
+      // Request with Japanese language preference
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'accept-language': 'ja-JP,ja;q=0.9,en-US;q=0.8' }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).toContain('Ad 1');
+    });
+
+    it('should NOT serve an ad when language does not match', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ languages: ["fr"] }) } // French only
+      });
+
+      // Request with Japanese language preference
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'accept-language': 'ja-JP,ja;q=0.9,en-US;q=0.8' }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(204);
+    });
+
+    it('should serve an ad when targeting multiple languages', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ languages: ["ja", "en"] }) } 
+      });
+
+      // Request with English language preference
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'accept-language': 'en-US,en;q=0.9' }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+    });
+
+    it('should serve an ad to any language when targeting is not set', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ os: ['iOS'] }) } // No language targeting
+      });
+
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 
+          'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X)',
+          'accept-language': 'de-DE,de;q=0.9' // German
+        }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+    });
+
+    it('should serve an ad when Accept-Language header is missing', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ languages: ["ja"] }) } 
+      });
+
+      // No Accept-Language header
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1');
+      const res = await GET(req);
+      expect(res.status).toBe(204); // No match because languages array is empty
+    });
+  });
+
+  describe('Geo Targeting (Prefecture)', () => {
+    it('should serve an ad when prefecture matches (Tokyo)', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ geo: ["東京都"] }) } 
+      });
+
+      // Request from Tokyo IP (AWS Tokyo region)
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'x-forwarded-for': '54.64.1.1' }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).toContain('Ad 1');
+    });
+
+    it('should NOT serve an ad when prefecture does not match', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ geo: ["北海道"] }) } // Hokkaido only
+      });
+
+      // Request from Tokyo IP
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'x-forwarded-for': '54.64.1.1' }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(204);
+    });
+
+    it('should serve an ad when targeting multiple prefectures', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ geo: ["東京都", "大阪府"] }) } 
+      });
+
+      // Request from Osaka IP
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'x-forwarded-for': '13.208.1.1' }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+    });
+
+    it('should serve an ad to any prefecture when geo targeting is not set', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ os: ['iOS'] }) } // No geo targeting
+      });
+
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 
+          'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X)',
+          'x-forwarded-for': '54.64.1.1'
+        }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+    });
+
+    it('should handle private IP addresses (no prefecture detection)', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ geo: ["東京都"] }) } 
+      });
+
+      // Private IP (cannot determine prefecture)
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'x-forwarded-for': '192.168.1.1' }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(204); // No match because prefecture is undefined
+    });
+
+    it('should handle unknown IP addresses (no prefecture detection)', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ geo: ["東京都"] }) } 
+      });
+
+      // Unknown IP (not in our mapping)
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 'x-forwarded-for': '1.2.3.4' }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(204);
+    });
+  });
+
+  describe('Combined Targeting (OS + Language + Geo)', () => {
+    it('should serve an ad when all targeting criteria match', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ 
+          os: ['iOS'], 
+          languages: ['ja'], 
+          geo: ['東京都'] 
+        }) } 
+      });
+
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 
+          'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X)',
+          'accept-language': 'ja-JP,ja;q=0.9',
+          'x-forwarded-for': '54.64.1.1' // Tokyo
+        }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).toContain('Ad 1');
+    });
+
+    it('should NOT serve an ad when one targeting criterion does not match', async () => {
+      await prisma.adGroup.update({ 
+        where: { id: 1 }, 
+        data: { targeting: JSON.stringify({ 
+          os: ['iOS'], 
+          languages: ['ja'], 
+          geo: ['東京都'] 
+        }) } 
+      });
+
+      // OS matches, language matches, but geo does not (Osaka IP)
+      const req = new NextRequest('http://localhost/api/serve?ad_unit_id=1', {
+        headers: { 
+          'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X)',
+          'accept-language': 'ja-JP,ja;q=0.9',
+          'x-forwarded-for': '13.208.1.1' // Osaka
+        }
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(204);
+    });
+  });
 });
