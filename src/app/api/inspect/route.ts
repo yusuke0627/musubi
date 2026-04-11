@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
       reason = "OUT_OF_SCHEDULE";
     }
     // ステップ10: OS・Scheduleターゲティング (targeting JSON)
-    else if (group.targeting && !checkTargeting(group.targeting, { os, dayOfWeek, hour })) {
+    else if (group.targeting && !checkTargeting(group.targeting, { os, dayOfWeek, hour, languages: [] })) {
       status = "REJECTED";
       // 理由を詳細化するため個別チェック
       try {
