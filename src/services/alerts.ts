@@ -116,6 +116,51 @@ export async function generateOptimizationAlerts(advertiserId: number): Promise<
     }
   }
 
+  // 🟡 Warning: 入札単価が低くてインプレッションシェアが低い
+  // 過去7日間のオークション統計を取得
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+  
+  for (const campaign of campaigns) {
+    for (const adGroup of campaign.adGroups) {
+      const stats = await prisma.adGroupAuctionStats.aggregate({
+        where: {
+          ad_group_id: adGroup.id,
+          date: { gte: sevenDaysAgo },
+        },
+        _sum: {
+          auction_count: true,
+          win_count: true,
+        },
+      });
+      
+      const auctionCount = stats._sum.auction_count || 0;
+      const winCount = stats._sum.win_count || 0;
+      
+      // 十分なサンプル数（100件以上）かつインプレッションシェア20%未満
+      if (auctionCount >= 100) {
+        const impressionShare = winCount / auctionCount;
+        if (impressionShare < 0.2) {
+          const alertId = `${AlertType.LOW_BID_IMPRESSION_SHARE}-${adGroup.id}`;
+          const sharePercent = (impressionShare * 100).toFixed(1);
+          allAlerts.push({
+            id: alertId,
+            severity: 'warning' as AlertSeverity,
+            title: '入札単価が低いため配信機会を逃しています',
+            description: `広告グループ「${adGroup.name}」のインプレッションシェアが${sharePercent}%です。より多くの配信機会を得るために入札単価の引き上げをご検討ください。（過去7日間: ${winCount}勝利/${auctionCount}参加）`,
+            action: {
+              label: '入札単価を変更する',
+              type: 'link',
+              href: `/advertiser/${advertiserId}?highlight=adgroups&edit=adgroup-${adGroup.id}`,
+            },
+            isDismissed: dismissedSet.has(alertId),
+          });
+        }
+      }
+    }
+  }
+
   // activeとdismissedに振り分け
   const activeAlerts = allAlerts.filter(a => !a.isDismissed);
   const dismissedAlertList = allAlerts.filter(a => a.isDismissed);
