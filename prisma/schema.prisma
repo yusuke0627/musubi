@@ -35,6 +35,18 @@ model Publisher {
   total_earnings       Float                      @default(0)
   rev_share            Float                      @default(0.7)
   min_payout_threshold Float                      @default(5000)
+  
+  // 公開登録用フィールド
+  email                String?                    @unique
+  phone                String?
+  address              String?
+  contact_name         String?
+  entity_type          String                     @default("individual")
+  bank_name            String?
+  bank_branch          String?
+  account_type         String?
+  account_number       String?
+  account_name         String?
   payouts              Payout[]
   apps                 App[]
   targetGroups         AdGroupTargetPublisher[]
