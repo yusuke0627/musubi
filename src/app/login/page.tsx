@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -71,7 +72,22 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-gray-100">
+        {/* 新規登録リンク */}
+        <div className="mt-6 pt-6 border-t border-gray-100">
+          <p className="text-center text-sm text-gray-600 mb-4">
+            アカウントをお持ちでないですか？
+          </p>
+          <div className="grid grid-cols-1 gap-2">
+            <Link
+              href="/register/publisher"
+              className="block w-full text-center py-2 px-4 border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+            >
+              媒体（Publisher）として登録
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-gray-100">
           <p className="text-center text-xs text-gray-400 uppercase tracking-widest font-bold mb-4">Demo Accounts</p>
           <div className="grid grid-cols-1 gap-2 text-xs text-gray-500 bg-gray-50 p-4 rounded-lg">
             <p><strong>Admin:</strong> admin@adnetwork.local / password123</p>
