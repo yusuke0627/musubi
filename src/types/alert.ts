@@ -22,6 +22,7 @@ export const AlertType = {
   NO_BUDGET: 'NO_BUDGET',
   BUDGET_EXHAUSTED: 'BUDGET_EXHAUSTED',
   PAYOUT_THRESHOLD_REACHED: 'PAYOUT_THRESHOLD_REACHED',
+  LOW_BID_IMPRESSION_SHARE: 'LOW_BID_IMPRESSION_SHARE',
 } as const;
 
 export type AlertType = typeof AlertType[keyof typeof AlertType];

@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { Prisma } from "@db";
 import { parseUserAgentContext } from "@/lib/userAgent";
 import { checkTargeting } from "@/lib/targeting";
+import { enqueueAuctionStats } from "@/lib/auctionStatsQueue";
 import { getPrefectureFromIP, parseAcceptLanguage } from "@/lib/ipGeo";
 
 export async function GET(req: NextRequest) {
@@ -112,6 +113,21 @@ export async function GET(req: NextRequest) {
 
   // スコア順に並べ替えてトップを選択
   const ad = matchedAds.sort((a, b) => b.score - a.score)[0];
+
+  // オークション統計を非同期で記録（パフォーマンス影響最小）
+  // candidateAds = オークション参加、matchedAds = ターゲティングマッチ
+  const auctionParticipantIds = new Set(candidateAds.map(a => a.ad_group_id));
+  const targetingMatchedIds = new Set(matchedAds.map(a => a.ad_group_id));
+  
+  // オークション参加を記録
+  auctionParticipantIds.forEach(adGroupId => {
+    enqueueAuctionStats(adGroupId, 'auction');
+  });
+  
+  // 勝利（インプレッション）を記録
+  if (ad) {
+    enqueueAuctionStats(ad.ad_group_id, 'win');
+  }
 
   if (!ad) {
     return new NextResponse(null, { status: 204 });

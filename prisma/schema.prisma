@@ -141,6 +141,7 @@ model AdGroup {
   schedules         AdSchedule[]
   targetPublishers  AdGroupTargetPublisher[]
   ads               Ad[]
+  auctionStats      AdGroupAuctionStats[]      // オークション統計
 
   @@map("ad_groups")
 }
@@ -237,6 +238,19 @@ model Conversion {
   rule       ConversionRule @relation(fields: [rule_id], references: [id])
 
   @@map("conversions")
+}
+
+// 広告グループのオークション統計（入札単価不足アラート用）
+model AdGroupAuctionStats {
+  id              Int      @id @default(autoincrement())
+  ad_group_id     Int
+  date            DateTime @default(now()) // 日次集計（時刻は無視）
+  auction_count   Int      @default(0)     // オークション参加回数
+  win_count       Int      @default(0)     // 勝利回数（インプレッション数）
+  adGroup         AdGroup  @relation(fields: [ad_group_id], references: [id], onDelete: Cascade)
+  
+  @@unique([ad_group_id, date])
+  @@map("ad_group_auction_stats")
 }
 
 // 最適化アラートのDismiss（無視）履歴

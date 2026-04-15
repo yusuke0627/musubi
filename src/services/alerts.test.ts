@@ -568,4 +568,182 @@ describe('Alerts Service', () => {
       expect(alerts.dismissedAlerts).toHaveLength(0);
     });
   });
+
+  describe('LOW_BID_IMPRESSION_SHARE alert', () => {
+    it('should detect low impression share (below 20%)', async () => {
+      const advertiser = await prisma.advertiser.create({
+        data: { id: 1, name: 'Test Advertiser', balance: 10000 }
+      });
+      
+      const campaign = await prisma.campaign.create({
+        data: {
+          id: 1,
+          advertiser_id: advertiser.id,
+          name: 'Test Campaign',
+          status: 'ACTIVE',
+          budget: 10000,
+          daily_budget: 1000,
+        }
+      });
+      
+      const adGroup = await prisma.adGroup.create({
+        data: {
+          id: 1,
+          campaign_id: campaign.id,
+          name: 'Low Bid AdGroup',
+          max_bid: 1, // 低い入札単価
+        }
+      });
+      
+      await prisma.ad.create({
+        data: {
+          id: 1,
+          ad_group_id: adGroup.id,
+          title: 'Test Ad',
+          target_url: 'http://test.com',
+          review_status: 'approved',
+          status: 'ACTIVE',
+        }
+      });
+
+      // オークション統計を作成（勝率15% = 20%未満）
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      await prisma.adGroupAuctionStats.create({
+        data: {
+          ad_group_id: adGroup.id,
+          date: today,
+          auction_count: 100,
+          win_count: 15, // 15% = 低い
+        }
+      });
+
+      const alerts = await generateOptimizationAlerts(advertiser.id);
+
+      const lowBidAlert = alerts.activeAlerts.find(
+        a => a.id === `${AlertType.LOW_BID_IMPRESSION_SHARE}-${adGroup.id}`
+      );
+      
+      expect(lowBidAlert).toBeDefined();
+      expect(lowBidAlert?.severity).toBe('warning');
+      expect(lowBidAlert?.title).toBe('入札単価が低いため配信機会を逃しています');
+    });
+
+    it('should not alert when impression share is above 20%', async () => {
+      const advertiser = await prisma.advertiser.create({
+        data: { id: 1, name: 'Test Advertiser', balance: 10000 }
+      });
+      
+      const campaign = await prisma.campaign.create({
+        data: {
+          id: 1,
+          advertiser_id: advertiser.id,
+          name: 'Test Campaign',
+          status: 'ACTIVE',
+          budget: 10000,
+          daily_budget: 1000,
+        }
+      });
+      
+      const adGroup = await prisma.adGroup.create({
+        data: {
+          id: 1,
+          campaign_id: campaign.id,
+          name: 'Good Bid AdGroup',
+          max_bid: 100,
+        }
+      });
+      
+      await prisma.ad.create({
+        data: {
+          id: 1,
+          ad_group_id: adGroup.id,
+          title: 'Test Ad',
+          target_url: 'http://test.com',
+          review_status: 'approved',
+          status: 'ACTIVE',
+        }
+      });
+
+      // オークション統計を作成（勝率30% = 良好）
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      await prisma.adGroupAuctionStats.create({
+        data: {
+          ad_group_id: adGroup.id,
+          date: today,
+          auction_count: 100,
+          win_count: 30, // 30% = OK
+        }
+      });
+
+      const alerts = await generateOptimizationAlerts(advertiser.id);
+
+      const lowBidAlert = alerts.activeAlerts.find(
+        a => a.id === `${AlertType.LOW_BID_IMPRESSION_SHARE}-${adGroup.id}`
+      );
+      
+      expect(lowBidAlert).toBeUndefined();
+    });
+
+    it('should not alert when sample size is too small', async () => {
+      const advertiser = await prisma.advertiser.create({
+        data: { id: 1, name: 'Test Advertiser', balance: 10000 }
+      });
+      
+      const campaign = await prisma.campaign.create({
+        data: {
+          id: 1,
+          advertiser_id: advertiser.id,
+          name: 'Test Campaign',
+          status: 'ACTIVE',
+          budget: 10000,
+          daily_budget: 1000,
+        }
+      });
+      
+      const adGroup = await prisma.adGroup.create({
+        data: {
+          id: 1,
+          campaign_id: campaign.id,
+          name: 'New AdGroup',
+          max_bid: 10,
+        }
+      });
+      
+      await prisma.ad.create({
+        data: {
+          id: 1,
+          ad_group_id: adGroup.id,
+          title: 'Test Ad',
+          target_url: 'http://test.com',
+          review_status: 'approved',
+          status: 'ACTIVE',
+        }
+      });
+
+      // オークション統計を作成（サンプル数不足：50件 < 100件）
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      await prisma.adGroupAuctionStats.create({
+        data: {
+          ad_group_id: adGroup.id,
+          date: today,
+          auction_count: 50, // 50件 < 100件（閾値）
+          win_count: 5, // 10% だけどサンプル不足
+        }
+      });
+
+      const alerts = await generateOptimizationAlerts(advertiser.id);
+
+      const lowBidAlert = alerts.activeAlerts.find(
+        a => a.id === `${AlertType.LOW_BID_IMPRESSION_SHARE}-${adGroup.id}`
+      );
+      
+      expect(lowBidAlert).toBeUndefined();
+    });
+  });
 });
